@@ -1,0 +1,5 @@
+homepage: "https://tapper.ai"
+documentation: "https://docs.tapper.ai"
+versions:
+  - sha: ""
+    changeNotes: Initial release of Tapper Conversion Script template.

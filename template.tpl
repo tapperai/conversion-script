@@ -19,6 +19,7 @@ ___INFO___
     "displayName": ""
   },
   "description": "Records a conversion event via the Tapper monitoring script.",
+  "categories": ["CONVERSIONS", "ADVERTISING"],
   "containerContexts": [
     "WEB"
   ]

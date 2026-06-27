@@ -55,7 +55,8 @@ const copyFromWindow = require('copyFromWindow');
 
 const scriptUrl = 'https://monitor.tapper.ai/bundle.js';
 const pk = data.pk;
-const conversion = data.conversion !== undefined && data.conversion !== '' ? data.conversion : 1;
+const makeNumber = require('makeNumber');
+const conversion = data.conversion !== undefined && data.conversion !== '' ? makeNumber(data.conversion) : 1;
 
 if (!pk) {
   logToConsole('Tapper: public key (pk) is missing');
@@ -227,7 +228,7 @@ scenarios:
       pk: 'pk_test_123456789',
       conversion: '5',
       gtmOnSuccess: () => {},
-      gtmOnFailure: () => fail('gtmOnSuccess should not be called')
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
     };
     runCode(mockData);
     assertApi('gtmOnSuccess').wasCalled();

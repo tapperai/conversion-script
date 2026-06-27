@@ -1,5 +1,5 @@
 homepage: "https://tapper.ai"
 documentation: "https://docs.tapper.ai"
 versions:
-  - sha: "eca6d58b022ddbc80e95a317935b8844c08f42c7"
+  - sha: "64d1294fa61b89b4fe3868f1e419bf10c3b9dce4"
     changeNotes: Initial release of Tapper Conversion Script template.

@@ -1,0 +1,33 @@
+name: Validate GTM Template
+
+# Pre-deploy gate. The GTM Community Template Gallery deploys by reading
+# metadata.yaml on pushes to the default branch, so this job must pass on
+# master and on every PR targeting it. The validator is fully
+# environment-independent: no secrets, no network, no third-party packages —
+# it will not block a legitimate deploy for transient/credential reasons.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  validate:
+    name: Validate template & metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so the metadata.yaml sha can be verified as a real
+          # commit reachable in this checkout.
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate template & metadata
+        run: npm test

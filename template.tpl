@@ -77,7 +77,13 @@ const copyFromWindow = require('copyFromWindow');
 const scriptUrl = 'https://monitor.tapper.ai/bundle.js';
 const pk = data.pk;
 const makeNumber = require('makeNumber');
-const conversion = data.conversion !== undefined && data.conversion !== '' ? makeNumber(data.conversion) : 1;
+// makeNumber returns NaN for non-numeric input (e.g. a misconfigured tag with
+// Conversion Value "abc"). NaN must never reach tapper.push — fall back to the
+// legacy default of 1. NaN is the only value not equal to itself, and the
+// sandbox has no isNaN API.
+const rawConversion = data.conversion !== undefined && data.conversion !== '' ? makeNumber(data.conversion) : 1;
+const conversionIsValid = rawConversion === rawConversion;
+const conversion = conversionIsValid ? rawConversion : 1;
 
 // Order Value must be a positive finite number to record a value. Anything
 // else falls back to the legacy conversion path — never drop the conversion.
@@ -90,6 +96,10 @@ if (!pk) {
   logToConsole('Tapper: public key (pk) is missing');
   data.gtmOnFailure();
   return;
+}
+
+if (!conversionIsValid) {
+  logToConsole('Tapper: Conversion Value is not a number, recording the conversion as 1');
 }
 
 if (hasOrderValue && !orderValueIsValid) {
@@ -328,6 +338,17 @@ scenarios:
       orderValue: 'not-a-number',
       currency: 'EUR',
       transactionId: 'ORD-1',
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+- name: Non-numeric Conversion Value falls back to 1
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: 'abc',
       gtmOnSuccess: () => {},
       gtmOnFailure: () => fail('gtmOnFailure should not be called')
     };

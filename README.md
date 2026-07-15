@@ -22,7 +22,7 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
 | Name | Display name | Required | Description |
 |------|--------------|----------|-------------|
 | `pk` | Public Key (pk) | Yes | Your Tapper Public Key (`pk_live_...` or `pk_test_...`). |
-| `conversion` | Conversion Value | No | Legacy conversion value, defaults to `1`. Provided string values are coerced to a number. Only used when **Order Value** is empty. |
+| `conversion` | Conversion Value | No | Legacy conversion value, defaults to `1`. Provided string values are coerced to a number; a non-numeric value records as `1`. Only used when **Order Value** is empty. |
 | `orderValue` | Order Value | No | Your order total, e.g. `{{Ecommerce Value}}`. Coerced to a number; if it is not a positive number the tag falls back to the legacy conversion — the conversion is never dropped. |
 | `currency` | Currency | No | 3-letter code, e.g. `EUR`. Leave empty to use your ad account's currency. |
 | `transactionId` | Transaction ID | No | Your order/transaction id. Enables value corrections. |

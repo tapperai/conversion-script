@@ -1,5 +1,7 @@
 homepage: "https://tapper.ai"
 documentation: "https://docs.tapper.ai"
 versions:
+  - sha: "dc40adcd92bded343f73dda758df2c1cc737ea57"
+    changeNotes: "Value conversions (Order Value / Currency / Transaction ID); non-numeric or out-of-range values fall back to 1 instead of pushing NaN/bad amounts."
   - sha: "62179c382db9008e24664b55e10527715db280b8"
     changeNotes: Initial release of Tapper Conversion Script template.

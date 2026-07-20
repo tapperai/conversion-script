@@ -80,14 +80,18 @@ const makeNumber = require('makeNumber');
 // makeNumber returns NaN for non-numeric input (e.g. a misconfigured tag with
 // Conversion Value "abc"). NaN must never reach tapper.push — fall back to the
 // legacy default of 1. NaN is the only value not equal to itself, and the
-// sandbox has no isNaN API.
+// sandbox has no isNaN API. Beyond NaN, the legacy Conversion Value must also
+// be range-guarded: negative, zero, Infinity, or absurdly large amounts must
+// fall back to 1 rather than being pushed as-is.
+// maxOrderValue is the shared upper bound for BOTH the legacy Conversion Value
+// and the Order Value paths, so it is declared before either use.
+const maxOrderValue = 9999999999;
 const rawConversion = data.conversion !== undefined && data.conversion !== '' ? makeNumber(data.conversion) : 1;
-const conversionIsValid = rawConversion === rawConversion;
+const conversionIsValid = rawConversion === rawConversion && rawConversion > 0 && rawConversion <= maxOrderValue;
 const conversion = conversionIsValid ? rawConversion : 1;
 
 // Order Value must be a positive finite number to record a value. Anything
 // else falls back to the legacy conversion path — never drop the conversion.
-const maxOrderValue = 9999999999;
 const hasOrderValue = data.orderValue !== undefined && data.orderValue !== '';
 const orderValue = hasOrderValue ? makeNumber(data.orderValue) : undefined;
 const orderValueIsValid = hasOrderValue && orderValue > 0 && orderValue <= maxOrderValue;

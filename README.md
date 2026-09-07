@@ -2,6 +2,13 @@
 
 Records a conversion event via the [Tapper](https://tapper.ai) monitoring script.
 
+> **Fire this tag on the order/approval CONFIRMATION page only. Never on a
+> landing page.** A trigger that matches an ad landing page records a
+> conversion for every visitor who clicks your ad. That corrupts your
+> conversion data, and it switches off the traffic rules Tapper runs for
+> converted visitors, so the protection you are paying for stops applying to
+> the very traffic you are buying.
+
 ## Setup
 
 1. Import this template into your GTM workspace via the **Community Template Gallery**.
@@ -14,7 +21,10 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
 6. Optionally set **Currency** (3-letter code, e.g. `EUR`; leave empty to use
    your ad account's currency) and a **Transaction ID** (your order/transaction
    id — enables value corrections).
-7. Set a trigger that fires on your conversion event (e.g. a purchase or sign-up).
+7. Set a trigger that fires on your conversion event, on the page a customer
+   only ever reaches once the order is placed or the application is approved
+   (e.g. a purchase or sign-up confirmation page). Never a landing page, and
+   never a plain All Pages / DOMContentLoaded trigger.
 8. Publish your container.
 
 ## Parameters
@@ -34,8 +44,10 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
 
 ## What it does
 
-On fire, the tag ensures the Tapper monitoring script is loaded (injecting and
-initialising it with your Public Key on first use), then records the conversion:
+On fire, the tag ensures the Tapper monitoring script is loaded and records the
+conversion. The loader is idempotent: it injects `bundle.js` only when the page
+has no Tapper bundle at all, so a site that already carries the Tapper
+monitoring snippet never ends up loading a second copy.
 
 - **Order Value set** — calls `tapper.push(orderValue, currency, transactionId)`
   (amount-first). Currency omitted → your connected ad account's default

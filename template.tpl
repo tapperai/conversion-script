@@ -18,7 +18,7 @@ ___INFO___
     "id": "brand_dummy",
     "displayName": ""
   },
-  "description": "Records a conversion event via the Tapper monitoring script.",
+  "description": "Records a conversion event via the Tapper monitoring script. Fire this tag on the order/approval CONFIRMATION page only. Never on a landing page.",
   "categories": ["CONVERSIONS", "ADVERTISING"],
   "containerContexts": [
     "WEB"
@@ -29,6 +29,11 @@ ___INFO___
 ___TEMPLATE_PARAMETERS___
 
 [
+  {
+    "type": "LABEL",
+    "name": "placementNote",
+    "displayName": "Fire this on the order/approval CONFIRMATION page only. Never on a landing page. A trigger that matches an ad landing page records a conversion for every visitor who clicks your ad, which corrupts your conversion data and switches off the traffic rules Tapper runs for converted visitors."
+  },
   {
     "type": "TEXT",
     "name": "pk",
@@ -41,14 +46,14 @@ ___TEMPLATE_PARAMETERS___
     "displayName": "Conversion Value",
     "simpleValueType": true,
     "defaultValue": "1",
-    "help": "The conversion value to record. Defaults to 1."
+    "help": "The conversion value to record. Defaults to 1. A fixed number here fires on every view of whatever page your trigger matches, so keep the trigger on the order/approval confirmation page."
   },
   {
     "type": "TEXT",
     "name": "orderValue",
     "displayName": "Order Value",
     "simpleValueType": true,
-    "help": "Map your order total variable, e.g. {{Ecommerce Value}}. Must be a number. Leave empty to record a plain conversion (legacy behaviour)."
+    "help": "Map your order total variable, e.g. {{Ecommerce Value}}. Must be a number. Leave empty to record a plain conversion (legacy behaviour). A hardcoded amount here fires on every view of whatever page your trigger matches, so keep the trigger on the order/approval confirmation page."
   },
   {
     "type": "TEXT",
@@ -119,10 +124,35 @@ function recordConversion() {
   data.gtmOnSuccess();
 }
 
+// Idempotent loader. bundle.js must be fetched and evaluated AT MOST ONCE per
+// page. Two independent signals say a bundle is already here:
+//
+//   1. `window.tapper` -- either the loader snippet's pre-init array buffer or
+//      a live Tapper instance. Whichever loader put it there owns the init()
+//      call, so this tag must not inject its own copy on top.
+//   2. `window.tapperObject` -- written by the bundle at module scope on every
+//      non-duplicate evaluation (tracker packages/client/src/index.ts), so its
+//      presence means a bundle has ALREADY RUN on this page.
+//
+// Signal 2 exists because of the Citi incident (2026-08): a page carrying the
+// merchant's own monitoring tag plus a second injected copy of bundle.js used
+// to lose everything already buffered, since the second evaluation replaced the
+// pre-init buffer with the first bundle's live instance. The tracker load-once
+// guard (tracker 15533cc5, PR #12) made a duplicate evaluation a no-op, and it
+// is why the `tapperObject` branch below must NOT inject: a second copy could
+// not restore a missing `window.tapper` anyway, so reporting failure is honest
+// where a silent `tapper.push` into nothing is not.
+//
+// The `'tapper-monitor-script'` cache token is the third layer: it de-dupes
+// repeat fires of GTM-injected scripts inside this container.
 var tapperExists = copyFromWindow('tapper');
+var bundleAlreadyEvaluated = copyFromWindow('tapperObject') !== undefined;
 
 if (tapperExists) {
   recordConversion();
+} else if (bundleAlreadyEvaluated) {
+  logToConsole('Tapper: a bundle already ran on this page but window.tapper is gone, not injecting a second copy');
+  data.gtmOnFailure();
 } else {
   injectScript(
     scriptUrl,
@@ -211,6 +241,21 @@ ___WEB_PERMISSIONS___
                 ],
                 "mapValue": [
                   {"type": 1, "string": "tapper"},
+                  {"type": 8, "boolean": true},
+                  {"type": 8, "boolean": false},
+                  {"type": 8, "boolean": false}
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {"type": 1, "string": "key"},
+                  {"type": 1, "string": "read"},
+                  {"type": 1, "string": "write"},
+                  {"type": 1, "string": "execute"}
+                ],
+                "mapValue": [
+                  {"type": 1, "string": "tapperObject"},
                   {"type": 8, "boolean": true},
                   {"type": 8, "boolean": false},
                   {"type": 8, "boolean": false}
@@ -359,6 +404,53 @@ scenarios:
     runCode(mockData);
     assertApi('gtmOnSuccess').wasCalled();
     assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+- name: Injects the bundle when the page has none
+  code: |-
+    mock('copyFromWindow', function () { return undefined; });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => {}
+    };
+    runCode(mockData);
+    assertApi('injectScript').wasCalled();
+- name: Does not inject a second bundle when window.tapper is already there
+  code: |-
+    // The merchant's own monitoring snippet left its pre-init array buffer on
+    // the page. Its loader owns init(); this tag only records.
+    mock('copyFromWindow', function (key) {
+      if (key === 'tapper') return [];
+      return undefined;
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('injectScript').wasNotCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+    assertApi('gtmOnSuccess').wasCalled();
+- name: Does not inject a second bundle when one has already evaluated
+  code: |-
+    // tapperObject on window means a bundle ALREADY RAN. A second copy is a
+    // no-op since tracker 15533cc5, so injecting could not fix a missing
+    // window.tapper - fail loudly instead of pushing into nothing.
+    mock('copyFromWindow', function (key) {
+      if (key === 'tapperObject') return [];
+      return undefined;
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      gtmOnSuccess: () => fail('gtmOnSuccess should not be called'),
+      gtmOnFailure: () => {}
+    };
+    runCode(mockData);
+    assertApi('injectScript').wasNotCalled();
+    assertApi('gtmOnFailure').wasCalled();
 setup: ''
 
 

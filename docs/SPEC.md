@@ -3,7 +3,7 @@
 > **Status:** `IMPLEMENTED`
 >
 > **Created:** 2026-08-26
-> **Last updated:** 2026-08-26
+> **Last updated:** 2026-09-07
 >
 > **Implemented in:** conversion-script
 
@@ -26,11 +26,14 @@ deployable artifact, published to the GTM Community Template Gallery.
 ```
 GTM container (merchant's site)
     |
-    | tag fires on trigger (e.g. Purchase)
+    | tag fires on trigger — the order/approval CONFIRMATION page ONLY
     v
-template.tpl sandboxed JS
-    ├── tapper already on window? ──> recordConversion()
-    └── not yet loaded ──> injectScript(monitor.tapper.ai/bundle.js)
+template.tpl sandboxed JS  (idempotent loader)
+    ├── window.tapper present? ──> recordConversion()      # that loader owns init()
+    ├── window.tapperObject present? ──> logToConsole + gtmOnFailure()
+    │       # a bundle ALREADY RAN here; a second copy is a no-op since
+    │       # tracker 15533cc5, so it could not restore a missing window.tapper
+    └── neither ──> injectScript(monitor.tapper.ai/bundle.js)
                                 ├── success ──> tapper.init(pk) ──> recordConversion()
                                 └── failure ──> logToConsole + gtmOnFailure()
 
@@ -50,6 +53,7 @@ declared in `template.tpl` under `___TEMPLATE_PARAMETERS___`:
 
 | Field | Type | Required | Default |
 |---|---|---|---|
+| `placementNote` | LABEL | n/a | n/a (static copy: confirmation page only, never a landing page) |
 | `pk` | TEXT | Yes | — |
 | `conversion` | TEXT (coerced to number) | No | `1` |
 | `orderValue` | TEXT (coerced to number) | No | — |
@@ -92,11 +96,39 @@ Tapper monitoring bundle onto `window`:
   to `tapper.push(conversion)` (legacy), logs a console warning, still calls
   `gtmOnSuccess()`.
 - **`conversion` is non-numeric** (e.g. `"abc"`) — falls back to `1`.
-- **`tapper` already exists on `window`** (script loaded by an earlier tag
-  fire on the same page) — skips `injectScript`/`tapper.init` and calls
-  `recordConversion()` directly.
+- **`tapper` already exists on `window`** (the merchant's own monitoring
+  snippet, or an earlier tag fire on the same page) — skips
+  `injectScript`/`tapper.init` and calls `recordConversion()` directly. The
+  value may be a live Tapper instance OR the snippet's pre-init array buffer;
+  either way the loader that put it there owns the `init()` call.
+- **`tapperObject` exists but `tapper` does not** — a bundle has already
+  evaluated on this page (the bundle writes `tapperObject` at module scope) and
+  something removed `window.tapper`. The tag logs and calls `gtmOnFailure()`
+  rather than injecting: since the tracker load-once guard (tracker
+  `15533cc5`, PR #12) a duplicate evaluation is a deliberate no-op, so a second
+  copy could not restore the missing global, and a silent `tapper.push` into
+  nothing would report a success that did not happen.
 - **Script injection fails** (network/CSP block) — logs and calls
   `gtmOnFailure()`.
+
+---
+
+## Placement rule (Citi, 2026-08)
+
+The tag must fire on the order/approval **confirmation** page only, never on a
+landing page. Citi's own tag manager ran Tapper's JavaScript conversion snippet
+with a hardcoded amount, bound to `DOMContentLoaded` of ad landing pages and
+the application funnel: about 87% of ad-click visitors recorded a fixed-value,
+no-`order_id` conversion roughly 3s after the click, inflating conversions
+~14x. The second-order damage is worse than the bad numbers —
+`tracker-analyser` short-circuits its whole rule battery for a visitor or IP
+that has converted, so a client who converts everybody has effectively turned
+their own ad-fraud protection off.
+
+The template says so in three places, deliberately: the `___INFO___`
+description (visible in the gallery listing), a leading `LABEL` parameter
+(visible above the fields whenever anyone edits the tag), and the `help` text
+on both value fields (where a hardcoded amount is actually typed).
 
 ---
 

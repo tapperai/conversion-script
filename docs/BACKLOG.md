@@ -55,6 +55,17 @@ prioritized.)
 
 ## Done
 
+- Idempotent bundle loader + confirmation-page placement rule, after the Citi
+  incident of 2026-08 (their Ensighten container fired Tapper's JavaScript
+  conversion snippet with a hardcoded amount on ad LANDING pages; ~87% of
+  ad-click visitors converted, conversions inflated ~14x, and
+  tracker-analyser's converted fast-exit left their protection effectively
+  off). The tag now skips `injectScript` when `window.tapper` or
+  `window.tapperObject` says a bundle is already on the page, and states the
+  confirmation-page rule in the gallery description, a leading LABEL parameter
+  and both value fields' help text. 2026-09-07 — **template only, NOT yet
+  released**: no `metadata.yaml` `versions[]` entry has been added, so the
+  Gallery still publishes the previous version.
 - Value conversions (Order Value / Currency / Transaction ID); non-numeric or
   out-of-range values fall back to `1` instead of pushing `NaN`/bad amounts.
   Released as `metadata.yaml` version sha `dc40adcd92bded343f73dda758df2c1cc737ea57`.

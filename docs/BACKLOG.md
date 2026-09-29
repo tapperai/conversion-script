@@ -21,6 +21,8 @@ Categories:
 (Explicitly asked, not shipped yet. Add new items here as the user mentions
 them. Each item should have enough context to pick up cold.)
 
+- Idempotent bundle loader + confirmation-page placement rule: in progress, open PR #3 (`fix/conversion-tag-idempotent-loader`, opened 2026-09-07, no activity since). Not released: `metadata.yaml` `versions[0]` is still `dc40adcd`. Do not merge #3 as written: its text breaks this repo's public-repo rule (CLAUDE.md), so land the change from a clean branch with clean text and a clean squash message, then close #3. It changes how conversions are recorded, so it gets one code review. When it merges, move this line to Done (do not add a second entry); the Gallery release is the separate `metadata.yaml` commit.
+
 ---
 
 ## P0 — needs verification

@@ -53,5 +53,4 @@ forces a two-commit dance per release:
 2. Commit a new `metadata.yaml` `versions[]` entry pointing at that sha (with
    `changeNotes`).
 
-Never point a version entry at a sha that does not exist yet, and never push
-without explicit per-branch approval.
+Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers push and merge their own release commits. Before pushing the release commit, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (CI does not run them), and get one code review when the change alters how conversions or order values are recorded. CI reports but cannot block: `master` is not branch-protected, and pushing a new `metadata.yaml` version to `master` is the release.

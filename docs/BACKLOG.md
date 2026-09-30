@@ -24,7 +24,8 @@ Categories:
 (Explicitly asked, not shipped yet. Add new items here as the user mentions
 them. Each item should have enough context to pick up cold.)
 
-- Idempotent bundle loader + confirmation-page placement rule: in progress, open PR #3 (`fix/conversion-tag-idempotent-loader`, opened 2026-09-07, no activity since). Not released: `metadata.yaml` `versions[0]` is still `dc40adcd`. Do not merge #3 as written: its text breaks this repo's public-repo rule (CLAUDE.md), so land the change from a clean branch with clean text and a clean squash message, then close #3. It changes how conversions are recorded, so it gets one code review. When it merges, move this line (do not add a second entry) to "P0 — needs verification" with the merge sha and "not released". Move it to Done only after the `metadata.yaml` version commit lands, citing that release sha as the existing Done lines do; a merge alone releases nothing.
+- Confirmation-page placement guidance in the tag editor (a LABEL parameter plus help text on Conversion Value and Order Value saying to fire the tag on the order confirmation page only, never on a landing page): open, not started. Editor text only, no runtime change. Needs a `template.tpl` change plus a `metadata.yaml` release. Split out of closed PR #3.
+- Idempotent bundle loader (closed PR #3): dropped 2026-09-30, not re-landed. `master` already skips `injectScript` when `window.tapper` exists (since the initial release) and de-dupes repeat fires with the `tapper-monitor-script` cache token. PR #3's extra `window.tapperObject` branch added nothing: after a clean bundle run `window.tapper` is defined non-configurable and non-writable, so that branch cannot be reached; after a failed run it would block the second copy that the bundle's load-once guard lets recover (the guard needs a live `window.tapper`).
 
 ---
 

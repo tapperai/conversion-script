@@ -3,7 +3,7 @@
 > **Status:** `IMPLEMENTED`
 >
 > **Created:** 2026-08-26
-> **Last updated:** 2026-08-26
+> **Last updated:** 2026-10-01
 >
 > **Implemented in:** conversion-script
 
@@ -113,16 +113,16 @@ editor, plus the environment-independent structural validator
 
 ### Releasing (maintainers)
 
-Pushing to `master` IS the deploy — the GTM Community Template Gallery
-publishes from `metadata.yaml`. Each `versions[].sha` must be a real,
+A new `metadata.yaml` version on `master` IS the release — the GTM Community
+Template Gallery publishes from `metadata.yaml`, so a push that adds no
+`versions[]` entry releases nothing. Each `versions[].sha` must be a real,
 reachable commit sha, which forces a two-commit dance:
 
 1. Commit the `template.tpl` change, then read its sha — `git rev-parse HEAD`.
 2. Commit a new `metadata.yaml` `versions[]` entry pointing at that sha, with
    `changeNotes`.
 
-Never point a version entry at a sha that doesn't exist yet. Never push
-without explicit per-branch approval.
+Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers push and merge their own release commits. Before pushing the release commit, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (CI does not run them), and get one code review when the change alters how conversions or order values are recorded. CI reports but cannot block: `master` is not branch-protected, and pushing a new `metadata.yaml` version to `master` is the release.
 
 ---
 
@@ -134,7 +134,7 @@ without explicit per-branch approval.
   embedded `___TESTS___` scenarios.
 - `metadata.yaml` -- Community Template Gallery release manifest: homepage,
   docs link, and the `versions[]` sha/changeNotes ledger that drives publish.
-- `scripts/validate-template.js` -- environment-independent pre-deploy gate
+- `scripts/validate-template.js` -- environment-independent pre-release check
   (`npm test`): checks `metadata.yaml`'s `versions[0].sha` is a real reachable
   commit, and that `template.tpl` has all required sections with valid
   embedded JSON. Deliberately does NOT execute the `___TESTS___` scenarios

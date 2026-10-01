@@ -35,8 +35,8 @@ No env vars, no services to start, no ports.
 PR targeting it (`actions/checkout` with `fetch-depth: 0` so the validator can
 verify `metadata.yaml`'s sha is reachable, then `actions/setup-node` at Node
 20). CI does not deploy anything — publishing to the Community Template
-Gallery is a manual/Google-side action keyed off `metadata.yaml`, not a CI
-step in this repo. See `docs/SPEC.md` → "Operational Procedures" for the
+Gallery happens on Google's side, keyed off a new `metadata.yaml`
+`versions[]` entry on `master`, not a CI step in this repo. See `docs/SPEC.md` → "Operational Procedures" for the
 release (two-commit) procedure.
 
 ## Secrets & Configuration

@@ -45,13 +45,13 @@ initialising it with your Public Key on first use), then records the conversion:
 
 ## Releasing (maintainers)
 
-Pushing to `master` IS the deploy: the GTM Community Template Gallery publishes
-from `metadata.yaml`. Each `versions[].sha` must be a REAL commit sha, which
+A new `metadata.yaml` version on `master` is the release: the GTM Community
+Template Gallery publishes from `metadata.yaml`, so a push that adds no
+`versions[]` entry releases nothing. Each `versions[].sha` must be a REAL commit sha, which
 forces a two-commit dance per release:
 
 1. Commit the `template.tpl` change and read its sha with `git rev-parse HEAD`.
 2. Commit a new `metadata.yaml` `versions[]` entry pointing at that sha (with
    `changeNotes`).
 
-Never point a version entry at a sha that does not exist yet, and never push
-without explicit per-branch approval.
+Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers push and merge their own release commits. Before pushing the release commit, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (CI does not run them), and get one code review when the change alters how conversions or order values are recorded. CI reports but cannot block: `master` is not branch-protected, and pushing a new `metadata.yaml` version to `master` is the release.

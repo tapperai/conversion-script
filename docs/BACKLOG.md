@@ -25,7 +25,6 @@ Categories:
 them. Each item should have enough context to pick up cold.)
 
 - Confirmation-page placement guidance in the tag editor (a LABEL parameter plus help text on Conversion Value and Order Value saying to fire the tag on the order confirmation page only, never on a landing page): open, not started. Editor text only, no runtime change. Needs a `template.tpl` change plus a `metadata.yaml` release. Split out of closed PR #3.
-- Idempotent bundle loader (closed PR #3): dropped 2026-09-30, not re-landed. `master` already skips `injectScript` when `window.tapper` exists (since the initial release) and de-dupes repeat fires with the `tapper-monitor-script` cache token. PR #3's extra `window.tapperObject` branch added nothing: after a clean bundle run `window.tapper` is defined non-configurable and non-writable, so that branch cannot be reached; after a failed run it would block the second copy that the bundle's load-once guard lets recover (the guard needs a live `window.tapper`).
 
 ---
 
@@ -67,3 +66,11 @@ prioritized.)
 - Initial release of the Tapper Conversion Script template. Released as
   `metadata.yaml` version sha `62179c382db9008e24664b55e10527715db280b8`.
 - Wired `document-first-template` submodule + bootstrapped `docs/` — 2026-08-26.
+
+---
+
+## Dropped
+
+(Asked for, then deliberately not shipped; the rationale stays here.)
+
+- Idempotent bundle loader (closed PR #3): dropped 2026-09-30, not re-landed. `master` already skips `injectScript` when `window.tapper` exists (since the initial release) and de-dupes repeat fires with the `tapper-monitor-script` cache token. PR #3's extra `window.tapperObject` branch added nothing: after a clean bundle run `window.tapper` is defined non-configurable and non-writable, so that branch cannot be reached; after a failed run it would block the second copy that the bundle's load-once guard lets recover (the guard needs a live `window.tapper`).

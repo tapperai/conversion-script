@@ -1,8 +1,9 @@
 name: Validate GTM Template
 
-# Pre-deploy gate. The GTM Community Template Gallery deploys by reading
-# metadata.yaml on pushes to the default branch, so this job must pass on
-# master and on every PR targeting it. The validator is fully
+# Pre-release check. The GTM Community Template Gallery releases a new
+# metadata.yaml version on the default branch, so this job should pass on
+# master and on every PR targeting it. It reports but cannot block: master
+# is not branch-protected. The validator is fully
 # environment-independent: no secrets, no network, no third-party packages —
 # it will not block a legitimate deploy for transient/credential reasons.
 

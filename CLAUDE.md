@@ -34,8 +34,9 @@ repo — the sandboxed JS lives inside `template.tpl` itself, validated by
 
 **This repo is PUBLIC** (the GTM Community Template Gallery publishes from it), so everything here is world-readable: every file (including `template.tpl` code comments, `README.md`, `docs/SPEC.md` and `docs/BACKLOG.md`), every commit message and branch name, and every PR, issue and comment. Write the technical change only: no customer names or customer domains, no workspace or protection-script ids, no rates, counts or internal table names, no operator quotes. The Backlog Discipline above still applies, but entries stay technical: the customer evidence and the why go in a private tapperai repo (its `docs/BACKLOG.md` or a private twin PR). Editing does not erase: PR edit history, the PR timeline and git history keep the old text, so get it right the first time.
 
-**Pushing to `master` IS the deploy** — the GTM Community Template Gallery
-publishes from `metadata.yaml`. Releasing requires a two-commit dance: commit
+**A new `metadata.yaml` version on `master` IS the release** — the GTM
+Community Template Gallery publishes from `metadata.yaml`; a push to `master`
+that adds no `versions[]` entry releases nothing. Releasing requires a two-commit dance: commit
 the `template.tpl` change, read its sha with `git rev-parse HEAD`, then commit
 a new `metadata.yaml` `versions[]` entry pointing at that real sha (see
 README.md → "Releasing (maintainers)"). Never point a version entry at a sha

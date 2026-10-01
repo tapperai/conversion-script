@@ -3,7 +3,7 @@
 > **Status:** `IMPLEMENTED`
 >
 > **Created:** 2026-08-26
-> **Last updated:** 2026-08-26
+> **Last updated:** 2026-10-01
 >
 > **Implemented in:** conversion-script
 
@@ -113,8 +113,9 @@ editor, plus the environment-independent structural validator
 
 ### Releasing (maintainers)
 
-Pushing to `master` IS the deploy — the GTM Community Template Gallery
-publishes from `metadata.yaml`. Each `versions[].sha` must be a real,
+A new `metadata.yaml` version on `master` IS the release — the GTM Community
+Template Gallery publishes from `metadata.yaml`, so a push that adds no
+`versions[]` entry releases nothing. Each `versions[].sha` must be a real,
 reachable commit sha, which forces a two-commit dance:
 
 1. Commit the `template.tpl` change, then read its sha — `git rev-parse HEAD`.
@@ -133,7 +134,7 @@ Never point a version entry at a sha that does not exist yet. If the `template.t
   embedded `___TESTS___` scenarios.
 - `metadata.yaml` -- Community Template Gallery release manifest: homepage,
   docs link, and the `versions[]` sha/changeNotes ledger that drives publish.
-- `scripts/validate-template.js` -- environment-independent pre-deploy gate
+- `scripts/validate-template.js` -- environment-independent pre-release check
   (`npm test`): checks `metadata.yaml`'s `versions[0].sha` is a real reachable
   commit, and that `template.tpl` has all required sections with valid
   embedded JSON. Deliberately does NOT execute the `___TESTS___` scenarios

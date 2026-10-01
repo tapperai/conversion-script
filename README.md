@@ -45,8 +45,9 @@ initialising it with your Public Key on first use), then records the conversion:
 
 ## Releasing (maintainers)
 
-Pushing to `master` IS the deploy: the GTM Community Template Gallery publishes
-from `metadata.yaml`. Each `versions[].sha` must be a REAL commit sha, which
+A new `metadata.yaml` version on `master` is the release: the GTM Community
+Template Gallery publishes from `metadata.yaml`, so a push that adds no
+`versions[]` entry releases nothing. Each `versions[].sha` must be a REAL commit sha, which
 forces a two-commit dance per release:
 
 1. Commit the `template.tpl` change and read its sha with `git rev-parse HEAD`.

@@ -26,9 +26,9 @@ No secrets, no network, no dependencies. Checks:
 3. The embedded JSON blocks (`___INFO___`, `___TEMPLATE_PARAMETERS___`,
    `___WEB_PERMISSIONS___`) are valid JSON.
 
-CI runs the same check — `.github/workflows/test.yml` runs `npm test` on
-push to `master` and on every PR targeting it. It reports but cannot block:
-`master` is not branch-protected, so run `npm test` yourself before a release. It deliberately does NOT
+CI runs the same check — `.github/workflows/test.yml` (required check
+`conversion-script-gate`) runs `npm test` on every ready PR targeting `master`
+and again in the merge queue, which is the only way into `master`. It deliberately does NOT
 execute the `___TESTS___` sandbox scenarios below — Google publishes no
 standalone runner for those outside the template editor.
 

@@ -30,7 +30,7 @@
 Single-file GTM Community Template (`template.tpl`) that records Tapper
 conversions client-side via `tapper.push`. There is no server or build in this
 repo: the sandboxed JS lives inside `template.tpl` itself, validated by
-`scripts/validate-template.js` (`npm test`) and CI (`.github/workflows/test.yml`, job and required check `conversion-script-gate`: runs on a ready PR and in the merge queue, drafts run nothing, no push run). `master` takes changes only through the merge queue (ruleset `merge-queue-master`, id 25056867, merge commits; `gh pr merge <n> --merge` enqueues).
+`scripts/validate-template.js` (run it locally with `npm test`) and CI (`.github/workflows/test.yml`, job and required check `conversion-script-gate`: runs on a ready PR and in the merge queue, drafts run nothing, no push run). `master` takes changes only through the merge queue (ruleset `merge-queue-master`, id 25056867, merge commits; `gh pr merge <n> --merge` enqueues).
 
 **This repo is PUBLIC** (the GTM Community Template Gallery publishes from it), so everything here is world-readable: every file (including `template.tpl` code comments, `README.md`, `docs/SPEC.md` and `docs/BACKLOG.md`), every commit message and branch name, and every PR, issue and comment. Write the technical change only: no customer names or customer domains, no workspace or protection-script ids, no rates, counts or internal table names, no operator quotes. The Backlog Discipline above still applies, but entries stay technical: the customer evidence and the why go in a private tapperai repo (its `docs/BACKLOG.md` or a private twin PR). Editing does not erase: PR edit history, the PR timeline and git history keep the old text, so get it right the first time.
 

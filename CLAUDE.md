@@ -28,16 +28,18 @@
 # conversion-script
 
 Single-file GTM Community Template (`template.tpl`) that records Tapper
-conversions client-side via `tapper.push`. There is no server/build in this
-repo — the sandboxed JS lives inside `template.tpl` itself, validated by
-`scripts/validate-template.js` (`npm test`) and CI (`.github/workflows/test.yml`, job and required check `conversion-script-gate`: runs on a ready PR and in the merge queue, drafts run nothing, no push run; `master` takes changes only through the merge queue, ruleset `merge-queue-master`, id 25056867, created 2026-10-14, merge commits).
+conversions client-side via `tapper.push`. There is no server or build in this
+repo: the sandboxed JS lives inside `template.tpl` itself, validated by
+`scripts/validate-template.js` (`npm test`) and CI (`.github/workflows/test.yml`, job and required check `conversion-script-gate`: runs on a ready PR and in the merge queue, drafts run nothing, no push run). `master` takes changes only through the merge queue (ruleset `merge-queue-master`, id 25056867, merge commits; `gh pr merge <n> --merge` enqueues).
 
 **This repo is PUBLIC** (the GTM Community Template Gallery publishes from it), so everything here is world-readable: every file (including `template.tpl` code comments, `README.md`, `docs/SPEC.md` and `docs/BACKLOG.md`), every commit message and branch name, and every PR, issue and comment. Write the technical change only: no customer names or customer domains, no workspace or protection-script ids, no rates, counts or internal table names, no operator quotes. The Backlog Discipline above still applies, but entries stay technical: the customer evidence and the why go in a private tapperai repo (its `docs/BACKLOG.md` or a private twin PR). Editing does not erase: PR edit history, the PR timeline and git history keep the old text, so get it right the first time.
 
-**A new `metadata.yaml` version on `master` IS the release** — the GTM
-Community Template Gallery publishes from `metadata.yaml`; a push to `master`
-that adds no `versions[]` entry releases nothing. Releasing requires a two-commit dance: commit
-the `template.tpl` change, read its sha with `git rev-parse HEAD`, then commit
-a new `metadata.yaml` `versions[]` entry pointing at that real sha (see
-README.md → "Releasing (maintainers)"). Never point a version entry at a sha
-that doesn't exist yet. You push and merge your own work here (operator, 2026-09-12).
+**A new `metadata.yaml` version on `master` IS the release.** The GTM
+Community Template Gallery serves the commit named by the FIRST `versions[]`
+entry (newest first); a merge that adds no entry releases nothing. Each `sha`
+must be a real commit: commit the `template.tpl` change, read its sha with
+`git rev-parse HEAD`, then commit a new first `versions[]` entry pointing at
+it (see README.md, "Releasing (maintainers)"). Both commits can ride in one PR,
+since queue merges are merge commits and keep the sha. Never point a version
+entry at a sha that does not exist yet. You push and merge your own work here
+(operator, 2026-09-12).

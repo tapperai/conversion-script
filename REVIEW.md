@@ -29,8 +29,8 @@ permission defect (tracking-script#7).
 
 ## Skip
 
-- `conversion-script-gate` (`.github/workflows/test.yml`, `scripts/validate-template.js` via
-  `npm test`) is required; do not restate its output.
+- `Validate template.tpl (pre-deploy gate)` (`.github/workflows/tests.yml`, `scripts/validate-template.js` via
+  `npm test`) runs on every ready PR and is required; do not restate its output.
 - README wording and template field labels that are not wrong.
 
 ## Checks worth running

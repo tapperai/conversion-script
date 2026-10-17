@@ -18,6 +18,11 @@
 # test set, so TYPECHECK, AFFECTED and FULL only add `CI gate` over it. The test batch (test-batch.yml: every
 # CI_BATCH_SIZE merges, nightly, on demand) runs it on master and bisects a red run to the guilty merge.
 #
+# PUBLIC REPO: a dispatch (the batch) validates the BRANCH HEAD it was started on, never a commit named by an input:
+# checking out an input-named ref in the default-branch context is what code scanning flags as cache poisoning. The
+# batch dispatches at the head it just counted, so the two are the same commit unless a newer merge landed in between
+# (then the newer head is what gets tested, and a notice says so). The bisect walks the branch's own first-parent line.
+#
 # COST: 1 billed minute per ready PR (arm64, $0.005); a batch run 1 minute.
 name: Tests
 run-name: "Tests ${{ inputs.sha || github.event.pull_request.head.sha || github.sha }} (${{ inputs.reason || github.event_name }})"
@@ -51,10 +56,18 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.sha || '' }}
           # Full history so the metadata.yaml sha can be verified as a real commit reachable in this checkout.
           fetch-depth: 0
           persist-credentials: false
+      - name: Which commit this run tests
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          ASKED: ${{ inputs.sha }}
+        run: |
+          head="$(git rev-parse HEAD)"
+          if [ -n "${ASKED}" ] && [ "${ASKED}" != "${head}" ]; then
+            echo "::notice::Asked for ${ASKED}; this run tests the branch head ${head} (public repo: no input-named checkout)."
+          fi
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "20"
@@ -88,7 +101,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Bisect

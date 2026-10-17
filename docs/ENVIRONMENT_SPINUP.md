@@ -31,15 +31,16 @@ No env vars, no services to start, no ports.
 
 ## CI/CD
 
-`.github/workflows/test.yml` (job and required check `conversion-script-gate`,
-`ubuntu-24.04-arm`, 5-minute timeout) runs `npm test` on every ready PR
-targeting `master` and on every merge-queue group (`actions/checkout` with
-`fetch-depth: 0` so the validator can verify `metadata.yaml`'s sha is
-reachable, then `actions/setup-node` at Node 20). Draft PRs run nothing: the
-job is skipped and the required check reports as passing. `master` takes
-changes only through the merge queue (ruleset `merge-queue-master`: merge
-commits, groups of up to 5, ALLGREEN, org admins may bypass), so there is no
-push run: the queue run already validated the exact merge commit that lands. CI does not deploy anything — publishing to the Community Template
+`.github/workflows/tests.yml` (CI standard 2026-10-17; job and required check
+`Validate template.tpl (pre-deploy gate)`, `ubuntu-24.04-arm`, 5-minute timeout)
+runs `npm test` on every ready PR targeting `master`, in every gate mode
+(`actions/checkout` with `fetch-depth: 0` so the validator can verify
+`metadata.yaml`'s sha is reachable, then `actions/setup-node` at Node 20).
+Ruleset `required-checks` on `master` requires it and `CI gate` (which follows
+the Actions variable `CI_GATE_MODE`, `NONE` today: skipped, which counts as
+passing). Draft PRs run nothing. There is no merge queue and no push run;
+`test-batch.yml` re-runs the check every `CI_BATCH_SIZE` merges, nightly and on
+demand, and bisects a red run to the guilty merge. CI does not deploy anything — publishing to the Community Template
 Gallery happens on Google's side, keyed off a new `metadata.yaml`
 `versions[]` entry on `master`, not a CI step in this repo. See `docs/SPEC.md` → "Operational Procedures" for the
 release (two-commit) procedure.

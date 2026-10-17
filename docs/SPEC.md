@@ -122,7 +122,7 @@ reachable commit sha, which forces a two-commit dance:
 2. Commit a new `metadata.yaml` `versions[]` entry pointing at that sha, with
    `changeNotes`.
 
-Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers open and merge their own release PRs: `master` takes changes only through the merge queue (ruleset `merge-queue-master`, merge commits, so every sha in the PR survives; org admins may bypass), and the required check `conversion-script-gate` (`npm test`) runs on the ready PR and again on the queue's merge commit. Both commits of the dance can ride in one PR, since the merge commit keeps the template commit's sha. Before marking the release PR ready, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (CI does not run them), and get one code review when the change alters how conversions or order values are recorded. Merging a new `metadata.yaml` version to `master` is the release.
+Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers open and merge their own release PRs: PRs merge directly as merge commits (so every sha in the PR survives; there is no merge queue), and the required check `Validate template.tpl (pre-deploy gate)` (`npm test`) runs on the ready PR. Both commits of the dance can ride in one PR, since the merge commit keeps the template commit's sha. Before marking the release PR ready, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (CI does not run them), and get one code review when the change alters how conversions or order values are recorded. Merging a new `metadata.yaml` version to `master` is the release.
 
 ---
 
@@ -139,8 +139,9 @@ Never point a version entry at a sha that does not exist yet. If the `template.t
   commit, and that `template.tpl` has all required sections with valid
   embedded JSON. Deliberately does NOT execute the `___TESTS___` scenarios
   (no standalone GTM sandbox test runner exists outside the template editor).
-- `.github/workflows/test.yml` -- CI: job `conversion-script-gate` runs
-  `npm test` on every ready PR targeting `master` and on every merge-queue
-  group (drafts run nothing; there is no push run).
+- `.github/workflows/tests.yml` -- CI: job `Validate template.tpl (pre-deploy
+  gate)` runs `npm test` on every ready PR targeting `master` (required, every
+  gate mode; drafts run nothing; there is no push run); `test-batch.yml` runs it
+  in batches.
 - `README.md` -- end-user setup instructions (GTM import, parameter mapping)
   and the maintainer release procedure.

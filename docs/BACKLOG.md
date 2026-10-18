@@ -76,3 +76,5 @@ prioritized.)
 (Asked for, then deliberately not shipped; the rationale stays here.)
 
 - Idempotent bundle loader (closed PR #3): dropped 2026-09-30, not re-landed. `master` already skips `injectScript` when `window.tapper` exists (since the initial release) and de-dupes repeat fires with the `tapper-monitor-script` cache token. PR #3's extra `window.tapperObject` branch added nothing: after a clean bundle run `window.tapper` is defined non-configurable and non-writable, so that branch cannot be reached; after a failed run it would block the second copy that the bundle's load-once guard lets recover (the guard needs a live `window.tapper`).
+
+- 2026-10-18: testing policy, affected path proven by this docs-only change (devops-sre).

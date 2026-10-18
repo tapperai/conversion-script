@@ -43,3 +43,23 @@ it (see README.md, "Releasing (maintainers)"). Both commits can ride in one PR,
 since queue merges are merge commits and keep the sha. Never point a version
 entry at a sha that does not exist yet. You push and merge your own work here
 (operator, 2026-09-12).
+
+## Testing a change (policy 2026-10-18)
+
+The author of each change chooses ONE of three, per change, and records it:
+1. **Local** (default for code): run the tests for your change on your machine; if they pass, merge with no GitHub test run.
+   Trailer `Tests: local (<the exact command you ran>)`.
+2. **Affected on GitHub**: GitHub runs only the tests the change can reach (`tests.yml` mode AFFECTED), for that PR only.
+   Label `ci:run-affected`, or the line `Tests: affected` in the PR description; on a commit that lands with no PR-time run,
+   the trailer `Tests: affected` makes the batch trigger dispatch it at merge.
+3. **None** (trivial: docs, copy, a style value): trailer `Tests: skip (<reason>)`, or label `ci:skip-tests`.
+`ci:run-tests` / `Tests: run` still starts the FULL suite on request.
+
+**The ONE local command:** `npm run test:changed` (`scripts/test-changed.*`; `-- --list` prints the selection only, `-- --base <ref>`). It takes
+everything changed since the merge-base with `origin/master` (commits, staged, unstaged, untracked), then runs `npm test` (validates `template.tpl`, its permission grants and `metadata.yaml`: the whole set, about a second) unless the change is prose only. AFFECTED in tests.yml runs the same single job.
+It prints `Tests selected: N ...` and what it ran, and on success `PASSED. Put in the commit and the PR description: Tests: local (...)`. The pre-deploy check `Validate template.tpl` is a required hard stop and runs on every ready PR whatever you recorded (one billed minute, it guards the branch Google's Gallery reads), so a recorded local or none choice saves the batch, not that check.
+
+**Trailer placement:** the last paragraph of the commit message AND of the PR description (a squash merge keeps it).
+**Batches and nightly:** every `CI_BATCH_SIZE` (10) merges per branch the FULL suite runs, counting ONLY `affected` and unmarked
+changes (`local` and `skip` are not counted); ONE nightly FULL run (01:41 UTC) as the safety net, only when master moved. A red batch **bisects** to the guilty
+merge (every failed check re-runs) and says which merges chose not to test on their own. Mechanics: `.github/workflows/tests.yml` header.

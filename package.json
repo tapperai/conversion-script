@@ -4,6 +4,7 @@
   "private": true,
   "description": "Tapper - Conversion Script GTM Community Template.",
   "scripts": {
-    "test": "node scripts/validate-template.js"
+    "test": "node scripts/validate-template.js",
+    "test:changed": "node scripts/test-changed.mjs"
   }
 }

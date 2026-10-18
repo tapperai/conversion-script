@@ -1,5 +1,7 @@
 # Backlog
 
+- 2026-10-18: testing policy, skip path proven by this docs-only change (devops-sre).
+
 Living list of every TODO the user has called out. When the user mentions
 something new, capture it here as a one-line technical paraphrase before
 starting work: never verbatim, never customer names, rates, domains or

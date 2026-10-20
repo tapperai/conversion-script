@@ -1,9 +1,9 @@
 # Conversion Script (GTM Template)
 
-> **Status:** `IMPLEMENTED`
+> **Status:** ACTIVE
 >
 > **Created:** 2026-08-26
-> **Last updated:** 2026-10-01
+> **Last updated:** 2026-10-20
 >
 > **Implemented in:** conversion-script
 
@@ -136,12 +136,15 @@ Never point a version entry at a sha that does not exist yet. If the `template.t
   docs link, and the `versions[]` sha/changeNotes ledger that drives publish.
 - `scripts/validate-template.js` -- environment-independent pre-release check
   (`npm test`): checks `metadata.yaml`'s `versions[0].sha` is a real reachable
-  commit, and that `template.tpl` has all required sections with valid
-  embedded JSON. Deliberately does NOT execute the `___TESTS___` scenarios
+  commit, and that `template.tpl` has all six required sections
+  (`___TERMS_OF_SERVICE___` included) with valid embedded JSON. Deliberately does NOT execute the `___TESTS___` scenarios
   (no standalone GTM sandbox test runner exists outside the template editor).
 - `.github/workflows/tests.yml` -- CI: job `Validate template.tpl (pre-deploy
   gate)` runs `npm test` on every ready PR targeting `master` (required, every
   gate mode; drafts run nothing; there is no push run); `test-batch.yml` runs it
   in batches.
+- `scripts/test-changed.mjs` -- `npm run test:changed`, the one local test
+  command (testing policy in CLAUDE.md); `scripts/test-changed.test.mjs` is its
+  `node --test` check, which CI also runs.
 - `README.md` -- end-user setup instructions (GTM import, parameter mapping)
   and the maintainer release procedure.

@@ -1,9 +1,9 @@
 # Conversion Script — Environment Spinup
 
-> **Status:** `IMPLEMENTED`
+> **Status:** ACTIVE
 >
 > **Created:** 2026-08-26
-> **Last updated:** 2026-08-26
+> **Last updated:** 2026-10-20
 >
 > **Implemented in:** conversion-script
 

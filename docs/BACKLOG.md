@@ -1,13 +1,11 @@
 # Backlog
 
-- 2026-10-18: testing policy, skip path proven by this docs-only change (devops-sre).
-
 Living list of every TODO the user has called out. When the user mentions
 something new, capture it here as a one-line technical paraphrase before
 starting work: never verbatim, never customer names, rates, domains or
 operator quotes (this is a public repo; see the public-repo rule in
 CLAUDE.md). When something
-lands, move it under "Done" with the SHA / date.
+lands, delete its entry in the same PR (git history keeps it).
 
 Categories:
 
@@ -17,7 +15,7 @@ Categories:
 - **P1 — open**: asked-for but lower urgency, or feature-parity items the
   user wants but hasn't blocked on.
 - **P2 — open**: nice-to-have, future parity, deferred.
-- **Done**: shipped + verified.
+- **Dropped**: asked for, deliberately not shipped, with the rationale.
 
 ---
 
@@ -31,8 +29,6 @@ them. Each item should have enough context to pick up cold.)
 ---
 
 ## P0 — needs verification
-
-- **2026-10-17: CI standard (no test gate on merges) live.** `tests.yml` holds the test set (mode `CI_GATE_MODE`, NONE today), ruleset `required-checks` (id 25307211) requires `CI gate`, `test-batch.yml` runs it every 10 merges, nightly and on demand and bisects a red batch. Verify: the first batch or nightly run on each branch is green.
 
 (Implemented somewhere in the build but the user hasn't manually seen it work.
 Walk through each one before claiming done.)
@@ -56,20 +52,9 @@ prioritized.)
 ## Meta / hygiene
 
 - Keep this file fresh: each new explicit user ask gets an entry **before** I
-  start coding it. After it ships and the user confirms, move it under Done.
+  start coding it. After it ships and the user confirms, delete it.
 - Never silently drop an item — if I push back on scope, note the rationale
   inline.
-
----
-
-## Done
-
-- Value conversions (Order Value / Currency / Transaction ID); non-numeric or
-  out-of-range values fall back to `1` instead of pushing `NaN`/bad amounts.
-  Released as `metadata.yaml` version sha `dc40adcd92bded343f73dda758df2c1cc737ea57`.
-- Initial release of the Tapper Conversion Script template. Released as
-  `metadata.yaml` version sha `62179c382db9008e24664b55e10527715db280b8`.
-- Wired `document-first-template` submodule + bootstrapped `docs/` — 2026-08-26.
 
 ---
 
@@ -78,5 +63,3 @@ prioritized.)
 (Asked for, then deliberately not shipped; the rationale stays here.)
 
 - Idempotent bundle loader (closed PR #3): dropped 2026-09-30, not re-landed. `master` already skips `injectScript` when `window.tapper` exists (since the initial release) and de-dupes repeat fires with the `tapper-monitor-script` cache token. PR #3's extra `window.tapperObject` branch added nothing: after a clean bundle run `window.tapper` is defined non-configurable and non-writable, so that branch cannot be reached; after a failed run it would block the second copy that the bundle's load-once guard lets recover (the guard needs a live `window.tapper`).
-
-- 2026-10-18: testing policy, affected path proven by this docs-only change (devops-sre).

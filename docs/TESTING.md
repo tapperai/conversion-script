@@ -12,8 +12,8 @@ the GTM template editor's "Tests" tab.
 ## Layer 1 — Structural validator (`npm test`)
 
 ```bash
-cd "/Users/rezi/Desktop/tapper /conversion-script"
-npm test   # runs scripts/validate-template.js
+npm test                # runs scripts/validate-template.js (from the repo root)
+npm run test:changed    # the one local command: npm test unless the change is prose only
 ```
 
 No secrets, no network, no dependencies. Checks:
@@ -21,7 +21,7 @@ No secrets, no network, no dependencies. Checks:
 1. `metadata.yaml` parses and `versions[0].sha` is a real commit reachable in
    this checkout (via `git cat-file -t <sha>`, only when run inside a git repo).
 2. `template.tpl` contains every required GTM section
-   (`___INFO___`, `___TEMPLATE_PARAMETERS___`, `___SANDBOXED_JS_FOR_WEB_TEMPLATE___`,
+   (`___TERMS_OF_SERVICE___`, `___INFO___`, `___TEMPLATE_PARAMETERS___`, `___SANDBOXED_JS_FOR_WEB_TEMPLATE___`,
    `___WEB_PERMISSIONS___`, `___TESTS___`).
 3. The embedded JSON blocks (`___INFO___`, `___TEMPLATE_PARAMETERS___`,
    `___WEB_PERMISSIONS___`) are valid JSON.

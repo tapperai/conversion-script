@@ -63,6 +63,14 @@ ___TEMPLATE_PARAMETERS___
     "displayName": "Transaction ID",
     "simpleValueType": true,
     "help": "Optional. Your order/transaction id. Enables value corrections."
+  },
+  {
+    "type": "CHECKBOX",
+    "name": "sendOrderIdWithZeroValue",
+    "checkboxText": "Send the order id when the order value is 0",
+    "simpleValueType": true,
+    "defaultValue": false,
+    "help": "Off by default. When on, an order whose Order Value is exactly 0 (e.g. a fully discounted or free order) is recorded with value 0, its currency and its Transaction ID, instead of as a plain conversion without an order id. Only applies when the Transaction ID is set. Negative, non-numeric and empty Order Values still record a plain conversion."
   }
 ]
 
@@ -77,6 +85,8 @@ const copyFromWindow = require('copyFromWindow');
 const scriptUrl = 'https://monitor.tapper.ai/bundle.js';
 const pk = data.pk;
 const makeNumber = require('makeNumber');
+const makeString = require('makeString');
+const getType = require('getType');
 // makeNumber returns NaN for non-numeric input (e.g. a misconfigured tag with
 // Conversion Value "abc"). NaN must never reach tapper.push — fall back to the
 // legacy default of 1. NaN is the only value not equal to itself, and the
@@ -96,6 +106,19 @@ const hasOrderValue = data.orderValue !== undefined && data.orderValue !== '';
 const orderValue = hasOrderValue ? makeNumber(data.orderValue) : undefined;
 const orderValueIsValid = hasOrderValue && orderValue > 0 && orderValue <= maxOrderValue;
 
+// Opt-in (checkbox, default off): an Order Value of exactly 0 ('0', '0.00', 0)
+// with a non-empty Transaction ID records value 0 with its order id instead of
+// the legacy conversion, which carries no order id. Zero means the number 0 or
+// a string holding a 0 digit: a blank string or false also coerce to 0, but
+// they are a misconfigured variable, not a zero-value order. The id always
+// goes as a string (makeString), so a numeric-looking id never becomes a
+// number. With the box off every input pushes exactly what it pushed before.
+const orderValueType = getType(data.orderValue);
+const orderValueIsZero = hasOrderValue && orderValue === 0 &&
+  (orderValueType === 'number' || (orderValueType === 'string' && data.orderValue.indexOf('0') !== -1));
+const zeroValueOrderId = data.transactionId !== undefined && data.transactionId !== null ? makeString(data.transactionId) : '';
+const sendZeroValueOrder = data.sendOrderIdWithZeroValue === true && orderValueIsZero && zeroValueOrderId !== '';
+
 if (!pk) {
   logToConsole('Tapper: public key (pk) is missing');
   data.gtmOnFailure();
@@ -106,13 +129,15 @@ if (!conversionIsValid) {
   logToConsole('Tapper: Conversion Value is not a number, recording the conversion as 1');
 }
 
-if (hasOrderValue && !orderValueIsValid) {
+if (hasOrderValue && !orderValueIsValid && !sendZeroValueOrder) {
   logToConsole('Tapper: Order Value is not a positive number, recording the conversion without a value');
 }
 
 function recordConversion() {
   if (orderValueIsValid) {
     callInWindow('tapper.push', orderValue, data.currency || undefined, data.transactionId || undefined);
+  } else if (sendZeroValueOrder) {
+    callInWindow('tapper.push', 0, data.currency || undefined, zeroValueOrderId);
   } else {
     callInWindow('tapper.push', conversion);
   }
@@ -359,7 +384,216 @@ scenarios:
     runCode(mockData);
     assertApi('gtmOnSuccess').wasCalled();
     assertApi('callInWindow').wasCalledWith('tapper.push', 1);
-setup: ''
+- name: Zero Order Value with an id and the option absent records the plain conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '0',
+      currency: 'EUR',
+      transactionId: 'ORD-0'
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', 'ORD-0');
+- name: Zero Order Value with an id and the option off records the plain conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '0',
+      currency: 'EUR',
+      transactionId: 'ORD-0',
+      sendOrderIdWithZeroValue: false
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', 'ORD-0');
+- name: Zero Order Value with an id and the option on records value 0 with the id
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '0',
+      currency: 'EUR',
+      transactionId: 'ORD-0',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 0, 'EUR', 'ORD-0');
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 1);
+- name: Order Value 0.00 with the option on and no currency records value 0 with the id
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '0.00',
+      currency: '',
+      transactionId: 'ORD-0',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 0, undefined, 'ORD-0');
+- name: Numeric Order Value 0 with the option on keeps a T-prefixed id as a string
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: 0,
+      currency: 'EUR',
+      transactionId: 'T123456789',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 0, 'EUR', 'T123456789');
+- name: A numeric order id stays a string on the zero-value push
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '0',
+      currency: 'EUR',
+      transactionId: 123456789,
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 0, 'EUR', '123456789');
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', 123456789);
+- name: Zero Order Value with the option on and an empty id records the plain conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '3',
+      orderValue: '0',
+      currency: 'EUR',
+      transactionId: '',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 3);
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', '');
+- name: Zero Order Value with the option on and no id field records the plain conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '0',
+      currency: 'EUR',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+- name: Blank Order Value with the option on records the plain conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: ' ',
+      currency: 'EUR',
+      transactionId: 'ORD-0',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', 'ORD-0');
+- name: False Order Value with the option on records the plain conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: false,
+      currency: 'EUR',
+      transactionId: 'ORD-0',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', 'ORD-0');
+- name: Positive Order Value with the option on is unchanged
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
+- name: Positive Order Value with the option off is unchanged
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      sendOrderIdWithZeroValue: false
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
+- name: Negative Order Value with the option on records the plain conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '-10',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', 'ORD-1');
+- name: Non-numeric Order Value with the option on records the plain conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: 'not-a-number',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', 'ORD-1');
+- name: Empty Order Value with the option on records the plain conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      sendOrderIdWithZeroValue: true
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+    assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', 'ORD-1');
+setup: |-
+  // The test sandbox loads no real script, so every scenario makes the bundle
+  // load succeed; recordConversion() then runs after tapper.init. callInWindow
+  // stays real, so the tapper.init and tapper.push grants are still checked.
+  mock('injectScript', (url, onSuccess, onFailure, cacheToken) => {
+    onSuccess();
+  });
 
 
 ___NOTES___

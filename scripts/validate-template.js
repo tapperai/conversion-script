@@ -12,10 +12,11 @@
  *   3. template.tpl: the embedded JSON blocks (___INFO___,
  *      ___TEMPLATE_PARAMETERS___, ___WEB_PERMISSIONS___) are valid JSON.
  *
- * NOTE: this intentionally does NOT execute the ___TESTS___ sandbox scenarios.
- * Google does not publish a standalone test runner for that, and gating on a
- * non-existent/unstable runner would block legitimate deploys. The scenarios
- * are run in the GTM template editor "Tests" tab before publishing.
+ * NOTE: this file does not execute the ___TESTS___ sandbox scenarios; the
+ * dependency-free emulator scripts/run_template_tests.mjs does, and `npm test`
+ * runs it right after this check. Google publishes no standalone runner, so
+ * the GTM template editor "Tests" tab stays the authoritative harness before
+ * publishing.
  */
 'use strict';
 

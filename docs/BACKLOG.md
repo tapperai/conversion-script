@@ -33,6 +33,8 @@ them. Each item should have enough context to pick up cold.)
 (Implemented somewhere in the build but the user hasn't manually seen it work.
 Walk through each one before claiming done.)
 
+- Opt-in `sendOrderIdWithZeroValue` checkbox (send `tapper.push(0, currency, id)` for a zero-value order with a Transaction ID; default off): in `template.tpl` with `___TESTS___` scenarios that `npm test` runs, but not released until a `metadata.yaml` `versions[]` entry names the merged template commit, and not yet seen in GTM Preview on a tag with the box ticked (value 0 and the id arriving as a string). Delete this entry with that release.
+
 ---
 
 ## P1 — open

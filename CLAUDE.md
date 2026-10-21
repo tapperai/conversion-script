@@ -29,7 +29,7 @@ The author of each change chooses ONE of three, per change, and records it:
 `ci:run-tests` / `Tests: run` still starts the FULL suite on request.
 
 **The ONE local command:** `npm run test:changed` (`scripts/test-changed.*`; `-- --list` prints the selection only, `-- --base <ref>`). It takes
-everything changed since the merge-base with `origin/master` (commits, staged, unstaged, untracked), then runs `npm test` (checks `template.tpl` has every required section with valid embedded JSON and that `metadata.yaml`'s newest `versions[]` sha is a real commit: the whole set, about a second) unless the change is prose only. AFFECTED in tests.yml runs the same single job.
+everything changed since the merge-base with `origin/master` (commits, staged, unstaged, untracked), then runs `npm test` (checks `template.tpl` has every required section with valid embedded JSON and that `metadata.yaml`'s newest `versions[]` sha is a real commit, then runs every `___TESTS___` scenario through `scripts/run_template_tests.mjs`: the whole set, about a second) unless the change is prose only. AFFECTED in tests.yml runs the same single job.
 It prints `Tests selected: N ...` and what it ran, and on success `PASSED. Put in the commit and the PR description: Tests: local (...)`. The pre-deploy check `Validate template.tpl` is a required hard stop and runs on every ready PR whatever you recorded (one billed minute, it guards the branch Google's Gallery reads), so a recorded local or none choice saves the batch, not that check.
 
 **Trailer placement:** the last paragraph of the commit message AND of the PR description (a squash merge keeps it).

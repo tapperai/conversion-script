@@ -3,7 +3,7 @@
 > **Status:** ACTIVE
 >
 > **Created:** 2026-08-26
-> **Last updated:** 2026-10-20
+> **Last updated:** 2026-10-21
 >
 > **Implemented in:** conversion-script
 
@@ -15,7 +15,8 @@ tag fires, its sandboxed JS ensures the Tapper monitoring script
 (`https://monitor.tapper.ai/bundle.js`) is loaded and initialised with the
 merchant's public key, then calls `tapper.push(...)` to record the
 conversion — either a plain legacy conversion value or a rich order value
-with currency and transaction id. The repo has no server, no build step, and
+with currency and transaction id (and, only when the opt-in
+`sendOrderIdWithZeroValue` box is ticked, a zero-value order with its id). The repo has no server, no build step, and
 no runtime process: `metadata.yaml` + `template.tpl` together ARE the
 deployable artifact, published to the GTM Community Template Gallery.
 
@@ -37,7 +38,9 @@ template.tpl sandboxed JS
 recordConversion():
   ├── Order Value valid (positive, finite, <= maxOrderValue)
   │     ──> tapper.push(orderValue, currency || undefined, transactionId || undefined)
-  └── Order Value absent/invalid
+  ├── sendOrderIdWithZeroValue ticked AND Order Value exactly 0 AND Transaction ID non-empty
+  │     ──> tapper.push(0, currency || undefined, makeString(transactionId))
+  └── Order Value absent/invalid (or 0 with the box off or no id)
         ──> tapper.push(conversion)   # legacy path, conversion defaults to 1
 ```
 
@@ -55,6 +58,7 @@ declared in `template.tpl` under `___TEMPLATE_PARAMETERS___`:
 | `orderValue` | TEXT (coerced to number) | No | — |
 | `currency` | TEXT | No | — |
 | `transactionId` | TEXT | No | — |
+| `sendOrderIdWithZeroValue` | CHECKBOX | No | `false` (off) |
 
 ---
 
@@ -66,7 +70,7 @@ Tapper monitoring bundle onto `window`:
 | Call | Args | When |
 |---|---|---|
 | `tapper.init` | `(pk)` | Once, right after `bundle.js` loads for the first time on the page |
-| `tapper.push` | `(orderValue, currency?, transactionId?)` or `(conversion)` | Every tag fire |
+| `tapper.push` | `(orderValue, currency?, transactionId?)`, `(0, currency?, transactionId)` (opt-in, see below) or `(conversion)` | Every tag fire |
 
 ---
 
@@ -83,6 +87,18 @@ Tapper monitoring bundle onto `window`:
   path — the conversion is never dropped just because the value is bad.
 - `currency` / `transactionId` are passed through only when the Order Value
   path is used, and only as truthy strings (`|| undefined`).
+- **`sendOrderIdWithZeroValue`** (checkbox, default off) — when ticked, an
+  Order Value of exactly 0 (the number `0`, or a string such as `'0'` or
+  `'0.00'` that parses to 0 and holds a `0` digit) with a non-empty
+  `transactionId` pushes `(0, currency || undefined, makeString(transactionId))`
+  instead of the legacy conversion, which carries no order id. The id always
+  goes as a string, so a numeric-looking id never becomes a number. A blank
+  string or `false` (which `makeNumber` also turns into 0), a negative, a
+  non-numeric or an empty Order Value, or a zero value without an id, keep
+  the legacy path. With the box off (or absent, on a tag saved before the
+  option existed) every input pushes exactly the same arguments as before
+  the option; the "not a positive number" console warning is skipped only
+  when the zero-value push is sent.
 
 ---
 
@@ -92,6 +108,9 @@ Tapper monitoring bundle onto `window`:
   to `tapper.push(conversion)` (legacy), logs a console warning, still calls
   `gtmOnSuccess()`.
 - **`conversion` is non-numeric** (e.g. `"abc"`) — falls back to `1`.
+- **`orderValue` is 0** — box off: legacy `tapper.push(conversion)`, as
+  before. Box on with a Transaction ID: `tapper.push(0, currency, id)`; box
+  on without one: legacy push.
 - **`tapper` already exists on `window`** (script loaded by an earlier tag
   fire on the same page) — skips `injectScript`/`tapper.init` and calls
   `recordConversion()` directly.
@@ -102,10 +121,12 @@ Tapper monitoring bundle onto `window`:
 
 ## Testing
 
-See [`TESTING.md`](TESTING.md) — this repo's tests are the `___TESTS___`
-sandbox scenarios embedded in `template.tpl`, run inside the GTM template
-editor, plus the environment-independent structural validator
-(`npm test` → `scripts/validate-template.js`) that also runs in CI.
+See [`TESTING.md`](TESTING.md) — this repo's tests are the
+environment-independent structural validator (`scripts/validate-template.js`)
+and the `___TESTS___` sandbox scenarios embedded in `template.tpl`, executed
+by the dependency-free emulator `scripts/run_template_tests.mjs`. `npm test`
+runs both, locally and in CI; the GTM template editor's Tests tab stays the
+authoritative harness for the scenarios.
 
 ---
 
@@ -122,7 +143,7 @@ reachable commit sha, which forces a two-commit dance:
 2. Commit a new `metadata.yaml` `versions[]` entry pointing at that sha, with
    `changeNotes`.
 
-Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers open and merge their own release PRs: PRs merge directly as merge commits (so every sha in the PR survives; there is no merge queue), and the required check `Validate template.tpl (pre-deploy gate)` (`npm test`) runs on the ready PR. Both commits of the dance can ride in one PR, since the merge commit keeps the template commit's sha. Before marking the release PR ready, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (CI does not run them), and get one code review when the change alters how conversions or order values are recorded. Merging a new `metadata.yaml` version to `master` is the release.
+Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers open and merge their own release PRs: PRs merge directly as merge commits (so every sha in the PR survives; there is no merge queue), and the required check `Validate template.tpl (pre-deploy gate)` (`npm test`) runs on the ready PR. Both commits of the dance can ride in one PR, since the merge commit keeps the template commit's sha. Before marking the release PR ready, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (`npm test` runs them in a local emulator; GTM's own runner is the authoritative one), and get one code review when the change alters how conversions or order values are recorded. Merging a new `metadata.yaml` version to `master` is the release.
 
 ---
 
@@ -137,8 +158,12 @@ Never point a version entry at a sha that does not exist yet. If the `template.t
 - `scripts/validate-template.js` -- environment-independent pre-release check
   (`npm test`): checks `metadata.yaml`'s `versions[0].sha` is a real reachable
   commit, and that `template.tpl` has all six required sections
-  (`___TERMS_OF_SERVICE___` included) with valid embedded JSON. Deliberately does NOT execute the `___TESTS___` scenarios
-  (no standalone GTM sandbox test runner exists outside the template editor).
+  (`___TERMS_OF_SERVICE___` included) with valid embedded JSON. It does not
+  execute the `___TESTS___` scenarios; the next file does.
+- `scripts/run_template_tests.mjs` -- dependency-free Node emulator (ported
+  from tracking-script) that runs every `___TESTS___` scenario against the
+  sandboxed JS with GTM's exact-path `access_globals` checks; `npm test` runs
+  it after the validator and fails on any failing scenario.
 - `.github/workflows/tests.yml` -- CI: job `Validate template.tpl (pre-deploy
   gate)` runs `npm test` on every ready PR targeting `master` (required, every
   gate mode; drafts run nothing; there is no push run); `test-batch.yml` runs it

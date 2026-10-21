@@ -14,6 +14,8 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
 6. Optionally set **Currency** (3-letter code, e.g. `EUR`; leave empty to use
    your ad account's currency) and a **Transaction ID** (your order/transaction
    id — enables value corrections).
+   Optionally tick **Send the order id when the order value is 0** (off by
+   default): see "What it does".
 7. Set a trigger that fires on your conversion event (e.g. a purchase or sign-up).
 8. Publish your container.
 
@@ -26,6 +28,7 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
 | `orderValue` | Order Value | No | Your order total, e.g. `{{Ecommerce Value}}`. Coerced to a number; if it is not a positive number the tag falls back to the legacy conversion — the conversion is never dropped. |
 | `currency` | Currency | No | 3-letter code, e.g. `EUR`. Leave empty to use your ad account's currency. |
 | `transactionId` | Transaction ID | No | Your order/transaction id. Enables value corrections. |
+| `sendOrderIdWithZeroValue` | Send the order id when the order value is 0 | No | Checkbox, off by default. When ticked, an order whose **Order Value** is exactly `0` (e.g. `0`, `'0'`, `'0.00'`) and that has a **Transaction ID** is recorded as `tapper.push(0, currency, transactionId)` (the id as a string) instead of a plain conversion without the id. With it off nothing changes. |
 
 ## Requirements
 
@@ -42,6 +45,12 @@ initialising it with your Public Key on first use), then records the conversion:
   currency applies.
 - **Order Value empty** — calls `tapper.push(conversion)`, the legacy path,
   exactly as before.
+- **Order Value 0** — with **Send the order id when the order value is 0**
+  off (the default), the legacy `tapper.push(conversion)`, exactly as before.
+  With it ticked and a Transaction ID set, `tapper.push(0, currency,
+  transactionId)`, so the order id of a zero-value order is recorded. A
+  negative, non-numeric or blank Order Value always records the legacy
+  conversion.
 
 ## Releasing (maintainers)
 
@@ -54,4 +63,4 @@ forces a two-commit dance per release:
 2. Commit a new `metadata.yaml` `versions[]` entry pointing at that sha (with
    `changeNotes`).
 
-Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers open and merge their own release PRs: PRs merge directly as merge commits (so every sha in the PR survives; there is no merge queue), and the required check `Validate template.tpl (pre-deploy gate)` (`npm test`) runs on the ready PR. Both commits of the dance can ride in one PR, since the merge commit keeps the template commit's sha. Before marking the release PR ready, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (CI does not run them), and get one code review when the change alters how conversions or order values are recorded. Merging a new `metadata.yaml` version to `master` is the release.
+Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers open and merge their own release PRs: PRs merge directly as merge commits (so every sha in the PR survives; there is no merge queue), and the required check `Validate template.tpl (pre-deploy gate)` (`npm test`) runs on the ready PR. Both commits of the dance can ride in one PR, since the merge commit keeps the template commit's sha. Before marking the release PR ready, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (`npm test` runs them in a local emulator; GTM's own runner is the authoritative one), and get one code review when the change alters how conversions or order values are recorded. Merging a new `metadata.yaml` version to `master` is the release.

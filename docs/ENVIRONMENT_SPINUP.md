@@ -3,7 +3,7 @@
 > **Status:** ACTIVE
 >
 > **Created:** 2026-08-26
-> **Last updated:** 2026-10-20
+> **Last updated:** 2026-10-21
 >
 > **Implemented in:** conversion-script
 
@@ -24,7 +24,7 @@ repo, not this one).
 git clone git@github.com:tapperai/conversion-script.git
 cd conversion-script
 npm install   # no dependencies today; installs nothing beyond package.json
-npm test      # scripts/validate-template.js — see docs/TESTING.md
+npm test      # scripts/validate-template.js + scripts/run_template_tests.mjs — see docs/TESTING.md
 ```
 
 No env vars, no services to start, no ports.

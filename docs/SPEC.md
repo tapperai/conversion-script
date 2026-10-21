@@ -121,11 +121,14 @@ Tapper monitoring bundle onto `window`:
   entries, no lists or nested objects, the personal-data screen) is applied
   where the conversion is received, which is what the help text states too: a
   field we cannot accept is dropped on its own and never costs the conversion.
-  That receiving side is still being built, and its screen is stricter than an
-  early reading of it suggested (it also refuses values that could identify a
-  person whatever their type), so the help text says what is kept in general
-  terms and points at nothing it cannot promise: re-read it against the
-  back-end rules table before the gallery release. An `additionalFields` value
+  The help text names the screen's surprising rules in the merchant's words,
+  from the final back-end list (back-end#2814, `src/services/conversionMetadata.ts`):
+  a value of 8 or more digits made only of digits and separators is skipped
+  (an id needs a letter, `T801884423`; exactly 10 or 13 digits are kept under a
+  key ending in `_at`, `_time`, `_timestamp`, `_ts`, `_epoch` or `_date`, and an
+  ISO date is kept), as are 32+ hex characters, a base64 digest, an IP address
+  with or without a port, an IBAN, an email address, a phone number, a street
+  address, a number past 2^53 - 1, and any key naming a person or a secret. An `additionalFields` value
   that is not an array (`getType`) is ignored. With no usable row the 4th
   argument is LEFT OFF, so every call is byte-identical to the one the template
   made before the option existed. No new sandbox permission: `callInWindow` is

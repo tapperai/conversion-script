@@ -43,11 +43,12 @@ example `{{DLV - voucher_applied}}`.
 | Rule | What happens |
 |------|--------------|
 | Name | Starts with a letter, then letters, numbers or underscores, up to 40 characters. Lowercase with underscores is suggested, e.g. `partner_purchase`. Case is kept, so `Plan` and `plan` are two different fields: pick one spelling. |
-| Value | Short text, a number, or `true` / `false`. |
+| Value | Text of 1 to 100 characters, a number up to `9007199254740991`, or `true` / `false`. |
 | Empty | A row with an empty name, or whose variable has no value, is skipped. `0` and `false` are values and are kept. |
 | How many | The first 20 fields are kept. An object of more than 200 entries is dropped whole. |
 | Lists and objects | Not accepted. Send one value per row. |
-| Personal data | A value that could identify a person, whatever its type, and a field named after a person's details, are not stored. |
+| Digits | A value of 8 or more digits made only of digits and separators is skipped: it cannot be told from a phone or card number. Give an id a letter, like `T801884423`. A Unix time of exactly 10 or 13 digits is kept under a name ending in `_at`, `_time`, `_timestamp`, `_ts`, `_epoch` or `_date`, and a date such as `2026-10-21` is kept. |
+| Personal data | Also skipped: 32 or more hex characters, a hash, an IP address (with or without a port), an IBAN, an email address, a phone number, a street address, and any field whose name points at a person (`email`, `phone`, `msisdn`, `first_name`, `address`, `postal_code` and the like) or at a secret (`cvv`, `pin`, `otp`, `password`, `token`, `api_key` and the like). |
 
 A field we cannot accept is dropped on its own: the conversion, its value, its
 currency and its order id are always recorded.

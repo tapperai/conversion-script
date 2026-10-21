@@ -124,9 +124,12 @@ Tapper monitoring bundle onto `window`:
   The help text names the screen's surprising rules in the merchant's words,
   from the final back-end list (back-end#2814, `src/services/conversionMetadata.ts`):
   a value of 8 or more digits made only of digits and separators is skipped
-  (an id needs a letter, `T801884423`; exactly 10 or 13 digits are kept under a
-  key ending in `_at`, `_time`, `_timestamp`, `_ts`, `_epoch` or `_date`, and an
-  ISO date is kept), as are 32+ hex characters, a base64 digest, an IP address
+  (an id needs a letter, `T801884423`; a Unix time in seconds or milliseconds
+  is kept under a key ending in `_at`, `_time`, `_timestamp`, `_ts`, `_epoch`
+  or `_date`, but only in range, `[1e9, 2e9)` seconds and `[1e12, 2e12)`
+  milliseconds, which is 2001-09-09 to 2033-05-18: any wider ceiling re-admits
+  10-digit North American phone numbers, whose area codes start at 2. An ISO
+  date as text is always kept), as are 32+ hex characters, a base64 digest, an IP address
   with or without a port, an IBAN, an email address, a phone number, a street
   address, a number past 2^53 - 1, and any key naming a person or a secret. An `additionalFields` value
   that is not an array (`getType`) is ignored. With no usable row the 4th

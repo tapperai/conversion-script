@@ -111,19 +111,26 @@ Tapper monitoring bundle onto `window`:
   default) - each row becomes one key of a plain object passed as the 4th
   argument of whichever push above applies. The template applies TWO rules and
   no more: a row whose name is empty (after `makeString`) is skipped, and a row
-  whose value is `undefined` or `null` (a GTM variable with no value) is
-  skipped. Values are passed as the types GTM produced: no coercion, no
-  trimming, no truncation. Everything else (the name shape
+  whose value is `undefined`, `null` or an empty cell (`makeString` of it is
+  `''`, which is what a variable that resolved to nothing leaves in a text
+  column) is skipped. `0` and `false` are values and are kept. Values are
+  passed as the types GTM produced: no coercion, no trimming, no truncation.
+  Everything else (the name shape
   `^[A-Za-z][A-Za-z0-9_]{0,39}$`, the 1 to 100 character text bound, finite
-  numbers, booleans, at most 20 fields, no lists or nested objects, the
-  personal-data filter) is applied where the conversion is received, which is
-  what the help text states too: a field we cannot accept is dropped on its own
-  and never costs the conversion. An `additionalFields` value that is not an
-  array (`getType`) is ignored. With no usable row the 4th argument is LEFT
-  OFF, so every call is byte-identical to the one the template made before the
-  option existed. No new sandbox permission: `callInWindow` is covered by the
-  exact-path `access_globals` `execute` grant on `tapper.push`, which does not
-  depend on the argument types.
+  numbers, booleans, at most 20 fields, the whole object dropped above 200
+  entries, no lists or nested objects, the personal-data screen) is applied
+  where the conversion is received, which is what the help text states too: a
+  field we cannot accept is dropped on its own and never costs the conversion.
+  That receiving side is still being built, and its screen is stricter than an
+  early reading of it suggested (it also refuses values that could identify a
+  person whatever their type), so the help text says what is kept in general
+  terms and points at nothing it cannot promise: re-read it against the
+  back-end rules table before the gallery release. An `additionalFields` value
+  that is not an array (`getType`) is ignored. With no usable row the 4th
+  argument is LEFT OFF, so every call is byte-identical to the one the template
+  made before the option existed. No new sandbox permission: `callInWindow` is
+  covered by the exact-path `access_globals` `execute` grant on `tapper.push`,
+  which does not depend on the argument types.
 
 ---
 
@@ -142,9 +149,22 @@ Tapper monitoring bundle onto `window`:
 - **The same name twice** - the GTM editor refuses it (`isUnique` on the Name
   column), and a name differing only in case (`Plan` and `plan`) is two
   different fields: pick one spelling.
+- **A row with a name and a blank value cell** - skipped, so the call keeps the
+  shape it had before the option existed. This is the one rule the template
+  applies that the receiving side would also have applied: without it a blank
+  cell would append `{"plan": ""}` to a tag whose editor shows an empty row.
 - **No usable row** - the 4th argument is left off, not sent as `{}`: a
-  differential run over 49,140 input combinations carrying no usable field
-  found zero behaviour differences against the previous template.
+  differential run over 70,200 input combinations carrying no usable field
+  (including named rows with a blank, `null` or `undefined` value) found zero
+  behaviour differences against the previous template.
+- **A pre-init page with fields, Currency empty and a Transaction ID set** -
+  `callInWindow` is `Array.prototype.push` on the stub, so the arguments land
+  as separate entries and today's drain reads a bare number followed by a
+  non-currency string as a score: the value, the order id AND the fields are
+  lost, and only the score is recorded. The value and order-id half of that is
+  older than this option; map Currency whenever you map fields. On a page where
+  the bundle has already loaded (the common case: the tag injects and
+  initialises it itself) every argument arrives.
 - **`tapper` already exists on `window`** (script loaded by an earlier tag
   fire on the same page) — skips `injectScript`/`tapper.init` and calls
   `recordConversion()` directly.

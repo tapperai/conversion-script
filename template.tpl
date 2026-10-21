@@ -82,7 +82,7 @@ ___TEMPLATE_PARAMETERS___
         "valueHint": "{{Your variable}}"
       }
     ],
-    "help": "Optional. Extra details about the transaction, sent with the conversion: one row per field. Name: start with a letter, then letters, numbers or underscores, up to 40 characters (lowercase with underscores is suggested, for example partner_purchase). Value: map one of your GTM variables, or type text of up to 100 characters, a number, or true or false. The first 20 fields are kept. A row with an empty name, or whose variable has no value, is skipped. A field we cannot accept is dropped on its own: the conversion, its value, its currency and its order id are always recorded. Send facts about the transaction, never details about the person: a value that looks like an email address, a phone number or a street address, and a field named like email, phone, msisdn, name or address, is not stored."
+    "help": "Optional. Extra details about the transaction, sent with the conversion: one row per field. Name: start with a letter, then letters, numbers or underscores, up to 40 characters (lowercase with underscores is suggested, for example partner_purchase). Value: map one of your GTM variables, or type short text, a number, or true or false. The first 20 fields are kept, and an object of more than 200 entries is dropped whole. A row with an empty name, or whose variable has no value, is skipped. A field we cannot accept is dropped on its own: the conversion, its value, its currency and its order id are always recorded. Send facts about the transaction, never details about the person: a value that could identify someone, whatever its type, and a field named after a person's details, are not stored."
   },
   {
     "type": "CHECKBOX",
@@ -140,21 +140,25 @@ const zeroValueOrderId = data.transactionId !== undefined && data.transactionId 
 const sendZeroValueOrder = data.sendOrderIdWithZeroValue === true && orderValueIsZero && zeroValueOrderId !== '';
 
 // Additional fields (optional SIMPLE_TABLE): one plain object built from the
-// rows and passed as the 4th argument of tapper.push. A row with an empty
-// name, or whose value variable resolved to nothing, is skipped here; every
-// other rule (name shape, length, type, how many are kept) is applied where
-// the conversion is received, so a field we cannot accept is dropped on its
-// own and never costs the conversion. Values go as the types GTM produced:
-// no coercion, so a number stays a number and a boolean stays a boolean.
-// hasAdditionalFields gates the 4th argument: with no fields every call below
-// is byte-identical to the call this template made before the option existed.
+// rows and passed as the 4th argument of tapper.push. A row is skipped here
+// when its name is empty, and when its value is undefined, null or an empty
+// cell (makeString of it is ''), which is what a variable that resolved to
+// nothing leaves behind. An empty cell must NOT reach the object: it would
+// append a 4th argument for a row the editor shows as blank, and the no-field
+// calls below would stop being the calls this template made before the option
+// existed. Every other rule (name shape, length, type, how many are kept, what
+// is never stored) is applied where the conversion is received, so a field we
+// cannot accept is dropped on its own and never costs the conversion. Values
+// go as the types GTM produced: no coercion, so a number stays a number and a
+// boolean stays a boolean.
 const additionalFieldRows = getType(data.additionalFields) === 'array' ? data.additionalFields : [];
 const additionalFields = {};
 var additionalFieldCount = 0;
 for (var i = 0; i < additionalFieldRows.length; i++) {
   const row = additionalFieldRows[i];
   const fieldName = getType(row) === 'object' && row.name !== undefined && row.name !== null ? makeString(row.name) : '';
-  if (fieldName !== '' && row.value !== undefined && row.value !== null) {
+  const fieldHasValue = getType(row) === 'object' && row.value !== undefined && row.value !== null && makeString(row.value) !== '';
+  if (fieldName !== '' && fieldHasValue) {
     additionalFields[fieldName] = row.value;
     additionalFieldCount++;
   }
@@ -778,6 +782,7 @@ scenarios:
         {name: '', value: 'dropped'},
         {name: 'voucher_applied', value: undefined},
         {name: 'partner_purchase', value: null},
+        {name: 'subscriber_status', value: ''},
         {name: 'plan', value: 'annual'}
       ],
       gtmOnSuccess: () => {},
@@ -801,6 +806,54 @@ scenarios:
     runCode(mockData);
     assertApi('gtmOnSuccess').wasCalled();
     assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
+- name: A named row whose value cell is blank pushes exactly the three value arguments
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [{name: 'plan', value: ''}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
+- name: A blank value cell on the legacy path pushes the bare conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '',
+      currency: '',
+      transactionId: '',
+      additionalFields: [{name: 'plan', value: ''}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+- name: A value of 0 or false is a value and still rides with the conversion
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [{name: 'seats', value: 0}, {name: 'partner_purchase', value: false}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertThat(pushArgs[3]).isEqualTo({seats: 0, partner_purchase: false});
 - name: Rows that all get skipped push exactly what the tag pushed before the option
   code: |-
     const mockData = {

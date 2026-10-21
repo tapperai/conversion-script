@@ -43,11 +43,11 @@ example `{{DLV - voucher_applied}}`.
 | Rule | What happens |
 |------|--------------|
 | Name | Starts with a letter, then letters, numbers or underscores, up to 40 characters. Lowercase with underscores is suggested, e.g. `partner_purchase`. Case is kept, so `Plan` and `plan` are two different fields: pick one spelling. |
-| Value | Text of 1 to 100 characters, a number, or `true` / `false`. |
-| Empty | A row with an empty name, or whose variable has no value, is skipped. |
-| How many | The first 20 fields are kept. |
+| Value | Short text, a number, or `true` / `false`. |
+| Empty | A row with an empty name, or whose variable has no value, is skipped. `0` and `false` are values and are kept. |
+| How many | The first 20 fields are kept. An object of more than 200 entries is dropped whole. |
 | Lists and objects | Not accepted. Send one value per row. |
-| Personal data | A value that looks like an email address, a phone number or a street address, and a field named like `email`, `phone`, `msisdn`, `name` or `address`, is not stored. |
+| Personal data | A value that could identify a person, whatever its type, and a field named after a person's details, are not stored. |
 
 A field we cannot accept is dropped on its own: the conversion, its value, its
 currency and its order id are always recorded.

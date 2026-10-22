@@ -16,8 +16,10 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
    id — enables value corrections).
    Optionally tick **Send the order id when the order value is 0** (off by
    default): see "What it does".
-7. Set a trigger that fires on your conversion event (e.g. a purchase or sign-up).
-8. Publish your container.
+7. Optionally add rows to **Additional fields** to send extra details about the
+   transaction (see "Additional fields").
+8. Set a trigger that fires on your conversion event (e.g. a purchase or sign-up).
+9. Publish your container.
 
 ## Parameters
 
@@ -29,6 +31,31 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
 | `currency` | Currency | No | 3-letter code, e.g. `EUR`. Leave empty to use your ad account's currency. |
 | `transactionId` | Transaction ID | No | Your order/transaction id. Enables value corrections. |
 | `sendOrderIdWithZeroValue` | Send the order id when the order value is 0 | No | Checkbox, off by default. When ticked, an order whose **Order Value** is exactly `0` (e.g. `0`, `'0'`, `'0.00'`) and that has a **Transaction ID** is recorded as `tapper.push(0, currency, transactionId)` (the id as a string) instead of a plain conversion without the id. With it off nothing changes. |
+| `additionalFields` | Additional fields | No | Table of **Name** and **Value** rows, empty by default. Each row adds one field to the conversion; the whole set rides as a 4th argument, `tapper.push(value, currency, transactionId, fields)`. With no rows the tag pushes exactly the arguments it pushed before. See "Additional fields". |
+
+## Additional fields
+
+Each row of **Additional fields** sends one extra detail about the transaction
+with the conversion, so the values can be used to shape bidding and to group
+conversions. Map the **Value** column to one of your own GTM variables, for
+example `{{DLV - voucher_applied}}`.
+
+| Rule | What happens |
+|------|--------------|
+| Name | Starts with a letter, then letters, numbers or underscores, up to 40 characters. Lowercase with underscores is suggested, e.g. `partner_purchase`. Case is kept, so `Plan` and `plan` are two different fields: pick one spelling. |
+| Value | Text of 1 to 100 characters, a number, or `true` / `false`. A number of 8 or more digits is skipped, see **Digits**. |
+| Empty | A row with an empty name, or whose variable has no value, is skipped. `0` and `false` are values and are kept. |
+| How many | The first 20 fields are kept. An object of more than 200 entries is dropped whole. |
+| Lists and objects | Not accepted. Send one value per row. |
+| Digits | A value of 8 or more digits made only of digits and separators is skipped: it cannot be told from a phone or card number. Give an id a letter, like `T801884423`. A Unix time in seconds (10 digits) or milliseconds (13 digits) between 2001 and 2033 is kept under a name ending in `_at`, `_time`, `_timestamp`, `_ts`, `_epoch` or `_date`; send a later date, such as a subscription that ends after 2033, as text like `2041-10-21`, which is always kept. |
+| Personal data | Also skipped: 32 or more hex characters, a hash, an IP address (with or without a port), an IBAN, an email address, a phone number, a street address, and any field whose name points at a person (`email`, `phone`, `msisdn`, `first_name`, `address`, `postal_code` and the like) or at a secret (`cvv`, `pin`, `otp`, `password`, `token`, `api_key` and the like). |
+
+A field we cannot accept is dropped on its own: the conversion, its value, its
+currency and its order id are always recorded.
+
+Send facts about the transaction, never details about the person. A one-time
+voucher code points at a person, so send `voucher_applied` rather than the code
+itself.
 
 ## Requirements
 
@@ -51,6 +78,11 @@ initialising it with your Public Key on first use), then records the conversion:
   transactionId)`, so the order id of a zero-value order is recorded. A
   negative, non-numeric or blank Order Value always records the legacy
   conversion.
+- **Additional fields set** - the rows are built into one object and passed as
+  the 4th argument of whichever push above applies (the legacy path sends
+  `tapper.push(conversion, undefined, undefined, fields)`). With no usable row
+  the 4th argument is left off entirely, so the call is the one the tag made
+  before the option existed.
 
 ## Releasing (maintainers)
 

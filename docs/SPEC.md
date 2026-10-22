@@ -16,7 +16,9 @@ tag fires, its sandboxed JS ensures the Tapper monitoring script
 merchant's public key, then calls `tapper.push(...)` to record the
 conversion — either a plain legacy conversion value or a rich order value
 with currency and transaction id (and, only when the opt-in
-`sendOrderIdWithZeroValue` box is ticked, a zero-value order with its id). The repo has no server, no build step, and
+`sendOrderIdWithZeroValue` box is ticked, a zero-value order with its id),
+optionally carrying a flat object of additional fields built from the
+`additionalFields` table. The repo has no server, no build step, and
 no runtime process: `metadata.yaml` + `template.tpl` together ARE the
 deployable artifact, published to the GTM Community Template Gallery.
 
@@ -42,6 +44,11 @@ recordConversion():
   │     ──> tapper.push(0, currency || undefined, makeString(transactionId))
   └── Order Value absent/invalid (or 0 with the box off or no id)
         ──> tapper.push(conversion)   # legacy path, conversion defaults to 1
+
+  additionalFields rows that survive the skip rules
+        ──> the same push with the fields object appended as the 4th argument
+            (legacy path: tapper.push(conversion, undefined, undefined, fields))
+        ──> no usable row: the 4th argument is left off, byte-identical to before
 ```
 
 ---
@@ -59,6 +66,7 @@ declared in `template.tpl` under `___TEMPLATE_PARAMETERS___`:
 | `currency` | TEXT | No | — |
 | `transactionId` | TEXT | No | — |
 | `sendOrderIdWithZeroValue` | CHECKBOX | No | `false` (off) |
+| `additionalFields` | SIMPLE_TABLE (`name`, `value`) | No | empty |
 
 ---
 
@@ -70,7 +78,7 @@ Tapper monitoring bundle onto `window`:
 | Call | Args | When |
 |---|---|---|
 | `tapper.init` | `(pk)` | Once, right after `bundle.js` loads for the first time on the page |
-| `tapper.push` | `(orderValue, currency?, transactionId?)`, `(0, currency?, transactionId)` (opt-in, see below) or `(conversion)` | Every tag fire |
+| `tapper.push` | `(orderValue, currency?, transactionId?)`, `(0, currency?, transactionId)` (opt-in, see below) or `(conversion)`, each with an optional 4th `fields` object | Every tag fire |
 
 ---
 
@@ -99,6 +107,36 @@ Tapper monitoring bundle onto `window`:
   option existed) every input pushes exactly the same arguments as before
   the option; the "not a positive number" console warning is skipped only
   when the zero-value push is sent.
+- **`additionalFields`** (SIMPLE_TABLE, columns `name` and `value`, empty by
+  default) - each row becomes one key of a plain object passed as the 4th
+  argument of whichever push above applies. The template applies TWO rules and
+  no more: a row whose name is empty (after `makeString`) is skipped, and a row
+  whose value is `undefined`, `null` or an empty cell (`makeString` of it is
+  `''`, which is what a variable that resolved to nothing leaves in a text
+  column) is skipped. `0` and `false` are values and are kept. Values are
+  passed as the types GTM produced: no coercion, no trimming, no truncation.
+  Everything else (the name shape
+  `^[A-Za-z][A-Za-z0-9_]{0,39}$`, the 1 to 100 character text bound, finite
+  numbers, booleans, at most 20 fields, the whole object dropped above 200
+  entries, no lists or nested objects, the personal-data screen) is applied
+  where the conversion is received, which is what the help text states too: a
+  field we cannot accept is dropped on its own and never costs the conversion.
+  The help text names the screen's surprising rules in the merchant's words,
+  from the final back-end list (back-end#2814, `src/services/conversionMetadata.ts`):
+  a value of 8 or more digits made only of digits and separators is skipped
+  (an id needs a letter, `T801884423`; a Unix time in seconds or milliseconds
+  is kept under a key ending in `_at`, `_time`, `_timestamp`, `_ts`, `_epoch`
+  or `_date`, but only in range, `[1e9, 2e9)` seconds and `[1e12, 2e12)`
+  milliseconds, which is 2001-09-09 to 2033-05-18: any wider ceiling re-admits
+  10-digit North American phone numbers, whose area codes start at 2. An ISO
+  date as text is always kept), as are 32+ hex characters, a base64 digest, an IP address
+  with or without a port, an IBAN, an email address, a phone number, a street
+  address, a number past 2^53 - 1, and any key naming a person or a secret. An `additionalFields` value
+  that is not an array (`getType`) is ignored. With no usable row the 4th
+  argument is LEFT OFF, so every call is byte-identical to the one the template
+  made before the option existed. No new sandbox permission: `callInWindow` is
+  covered by the exact-path `access_globals` `execute` grant on `tapper.push`,
+  which does not depend on the argument types.
 
 ---
 
@@ -111,6 +149,28 @@ Tapper monitoring bundle onto `window`:
 - **`orderValue` is 0** — box off: legacy `tapper.push(conversion)`, as
   before. Box on with a Transaction ID: `tapper.push(0, currency, id)`; box
   on without one: legacy push.
+- **A field name typed as a number** (e.g. a variable returning `2026`) -
+  `makeString` makes it the text key `"2026"`; the receiving side then refuses
+  it, because a name must start with a letter.
+- **The same name twice** - the GTM editor refuses it (`isUnique` on the Name
+  column), and a name differing only in case (`Plan` and `plan`) is two
+  different fields: pick one spelling.
+- **A row with a name and a blank value cell** - skipped, so the call keeps the
+  shape it had before the option existed. This is the one rule the template
+  applies that the receiving side would also have applied: without it a blank
+  cell would append `{"plan": ""}` to a tag whose editor shows an empty row.
+- **No usable row** - the 4th argument is left off, not sent as `{}`: a
+  differential run over 70,200 input combinations carrying no usable field
+  (including named rows with a blank, `null` or `undefined` value) found zero
+  behaviour differences against the previous template.
+- **A pre-init page with fields, Currency empty and a Transaction ID set** -
+  `callInWindow` is `Array.prototype.push` on the stub, so the arguments land
+  as separate entries and today's drain reads a bare number followed by a
+  non-currency string as a score: the value, the order id AND the fields are
+  lost, and only the score is recorded. The value and order-id half of that is
+  older than this option; map Currency whenever you map fields. On a page where
+  the bundle has already loaded (the common case: the tag injects and
+  initialises it itself) every argument arrives.
 - **`tapper` already exists on `window`** (script loaded by an earlier tag
   fire on the same page) — skips `injectScript`/`tapper.init` and calls
   `recordConversion()` directly.

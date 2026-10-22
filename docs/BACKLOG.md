@@ -33,6 +33,8 @@ them. Each item should have enough context to pick up cold.)
 (Implemented somewhere in the build but the user hasn't manually seen it work.
 Walk through each one before claiming done.)
 
+- `additionalFields` table (Name / Value rows built into one object and passed as the 4th argument of `tapper.push`): in `template.tpl` with `___TESTS___` scenarios that `npm test` runs, and a differential run over 70,200 no-field input combinations (including named rows with a blank, null or undefined value) showing every call unchanged, but NOT released (no `metadata.yaml` `versions[]` entry naming the merged template commit) and not yet seen in GTM Preview with rows filled in. The receiving side applies the name, type, count and personal-data rules; until it ships, the 4th argument is ignored and the conversion is recorded as it is today. Delete this entry with that release.
+
 - Opt-in `sendOrderIdWithZeroValue` checkbox (send `tapper.push(0, currency, id)` for a zero-value order with a Transaction ID; default off): in `template.tpl` with `___TESTS___` scenarios that `npm test` runs, but not released until a `metadata.yaml` `versions[]` entry names the merged template commit, and not yet seen in GTM Preview on a tag with the box ticked (value 0 and the id arriving as a string). Delete this entry with that release.
 
 ---

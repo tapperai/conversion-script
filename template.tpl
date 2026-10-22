@@ -65,6 +65,26 @@ ___TEMPLATE_PARAMETERS___
     "help": "Optional. Your order/transaction id. Enables value corrections."
   },
   {
+    "type": "SIMPLE_TABLE",
+    "name": "additionalFields",
+    "displayName": "Additional fields",
+    "simpleTableColumns": [
+      {
+        "type": "TEXT",
+        "name": "name",
+        "displayName": "Name",
+        "isUnique": true
+      },
+      {
+        "type": "TEXT",
+        "name": "value",
+        "displayName": "Value",
+        "valueHint": "{{Your variable}}"
+      }
+    ],
+    "help": "Optional. Extra details about the transaction, sent with the conversion: one row per field. Name: start with a letter, then letters, numbers or underscores, up to 40 characters (lowercase with underscores is suggested, for example partner_purchase). Value: map one of your GTM variables, or type text of 1 to 100 characters, a number, or true or false. The first 20 fields are kept, and an object of more than 200 entries is dropped whole. A row with an empty name, or whose variable has no value, is skipped. Send facts about the transaction, never details about the person. These are skipped, because they cannot be told from someone's details: a value of 8 or more digits made only of digits and separators (give an id a letter, like T801884423; a Unix time in seconds (10 digits) or milliseconds (13 digits) between 2001 and 2033 is kept under a name ending in _at, _time, _timestamp, _ts, _epoch or _date, and a date written as text, such as 2041-10-21, is always kept), 32 or more hex characters, a hash, an IP address, an IBAN, an email address, a phone number, a street address, a number above 9007199254740991, and any field named after a person or a secret. A field we cannot accept is dropped on its own: the conversion, its value, its currency and its order id are always recorded."
+  },
+  {
     "type": "CHECKBOX",
     "name": "sendOrderIdWithZeroValue",
     "checkboxText": "Send the order id when the order value is 0",
@@ -119,6 +139,32 @@ const orderValueIsZero = hasOrderValue && orderValue === 0 &&
 const zeroValueOrderId = data.transactionId !== undefined && data.transactionId !== null ? makeString(data.transactionId) : '';
 const sendZeroValueOrder = data.sendOrderIdWithZeroValue === true && orderValueIsZero && zeroValueOrderId !== '';
 
+// Additional fields (optional SIMPLE_TABLE): one plain object built from the
+// rows and passed as the 4th argument of tapper.push. A row is skipped here
+// when its name is empty, and when its value is undefined, null or an empty
+// cell (makeString of it is ''), which is what a variable that resolved to
+// nothing leaves behind. An empty cell must NOT reach the object: it would
+// append a 4th argument for a row the editor shows as blank, and the no-field
+// calls below would stop being the calls this template made before the option
+// existed. Every other rule (name shape, length, type, how many are kept, what
+// is never stored) is applied where the conversion is received, so a field we
+// cannot accept is dropped on its own and never costs the conversion. Values
+// go as the types GTM produced: no coercion, so a number stays a number and a
+// boolean stays a boolean.
+const additionalFieldRows = getType(data.additionalFields) === 'array' ? data.additionalFields : [];
+const additionalFields = {};
+var additionalFieldCount = 0;
+for (var i = 0; i < additionalFieldRows.length; i++) {
+  const row = additionalFieldRows[i];
+  const fieldName = getType(row) === 'object' && row.name !== undefined && row.name !== null ? makeString(row.name) : '';
+  const fieldHasValue = getType(row) === 'object' && row.value !== undefined && row.value !== null && makeString(row.value) !== '';
+  if (fieldName !== '' && fieldHasValue) {
+    additionalFields[fieldName] = row.value;
+    additionalFieldCount++;
+  }
+}
+const hasAdditionalFields = additionalFieldCount > 0;
+
 if (!pk) {
   logToConsole('Tapper: public key (pk) is missing');
   data.gtmOnFailure();
@@ -135,11 +181,23 @@ if (hasOrderValue && !orderValueIsValid && !sendZeroValueOrder) {
 
 function recordConversion() {
   if (orderValueIsValid) {
-    callInWindow('tapper.push', orderValue, data.currency || undefined, data.transactionId || undefined);
+    if (hasAdditionalFields) {
+      callInWindow('tapper.push', orderValue, data.currency || undefined, data.transactionId || undefined, additionalFields);
+    } else {
+      callInWindow('tapper.push', orderValue, data.currency || undefined, data.transactionId || undefined);
+    }
   } else if (sendZeroValueOrder) {
-    callInWindow('tapper.push', 0, data.currency || undefined, zeroValueOrderId);
+    if (hasAdditionalFields) {
+      callInWindow('tapper.push', 0, data.currency || undefined, zeroValueOrderId, additionalFields);
+    } else {
+      callInWindow('tapper.push', 0, data.currency || undefined, zeroValueOrderId);
+    }
   } else {
-    callInWindow('tapper.push', conversion);
+    if (hasAdditionalFields) {
+      callInWindow('tapper.push', conversion, undefined, undefined, additionalFields);
+    } else {
+      callInWindow('tapper.push', conversion);
+    }
   }
   data.gtmOnSuccess();
 }
@@ -587,6 +645,259 @@ scenarios:
     assertApi('gtmOnSuccess').wasCalled();
     assertApi('callInWindow').wasCalledWith('tapper.push', 1);
     assertApi('callInWindow').wasNotCalledWith('tapper.push', 0, 'EUR', 'ORD-1');
+- name: Additional fields ride the value push as the fourth argument
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [
+        {name: 'partner_purchase', value: 'yes'},
+        {name: 'voucher_applied', value: true}
+      ],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(pushArgs).isEqualTo([49.99, 'EUR', 'ORD-1', {partner_purchase: 'yes', voucher_applied: true}]);
+- name: The object argument needs no sandbox permission of its own
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [{name: 'plan', value: 'annual'}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalled();
+- name: Additional fields ride the zero-value order push
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '0',
+      currency: 'EUR',
+      transactionId: 'ORD-0',
+      sendOrderIdWithZeroValue: true,
+      additionalFields: [{name: 'plan', value: 'annual'}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(pushArgs).isEqualTo([0, 'EUR', 'ORD-0', {plan: 'annual'}]);
+- name: Additional fields ride the legacy conversion push after two undefined arguments
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '3',
+      orderValue: '',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [{name: 'subscriber_status', value: 'new'}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(pushArgs[0]).isStrictlyEqualTo(3);
+    assertThat(pushArgs[1]).isUndefined();
+    assertThat(pushArgs[2]).isUndefined();
+    assertThat(pushArgs[3]).isEqualTo({subscriber_status: 'new'});
+- name: Field values keep the types the variables produced
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [
+        {name: 'plan', value: 'premium'},
+        {name: 'seats', value: 4},
+        {name: 'partner_purchase', value: false}
+      ],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertThat(pushArgs[3].plan).isStrictlyEqualTo('premium');
+    assertThat(pushArgs[3].seats).isStrictlyEqualTo(4);
+    assertThat(pushArgs[3].partner_purchase).isFalse();
+- name: A field name given as a number is kept as text
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [{name: 2026, value: 'yes'}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertThat(pushArgs[3]).isEqualTo({'2026': 'yes'});
+- name: Rows with no name or no value are skipped and the rest are kept
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [
+        {name: '', value: 'dropped'},
+        {name: 'voucher_applied', value: undefined},
+        {name: 'partner_purchase', value: null},
+        {name: 'subscriber_status', value: ''},
+        {name: 'plan', value: 'annual'}
+      ],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(pushArgs).isEqualTo([49.99, 'EUR', 'ORD-1', {plan: 'annual'}]);
+- name: An empty additional fields table pushes exactly the three value arguments
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
+- name: A named row whose value cell is blank pushes exactly the three value arguments
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [{name: 'plan', value: ''}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
+- name: A blank value cell on the legacy path pushes the bare conversion
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '',
+      currency: '',
+      transactionId: '',
+      additionalFields: [{name: 'plan', value: ''}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+- name: A value of 0 or false is a value and still rides with the conversion
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: [{name: 'seats', value: 0}, {name: 'partner_purchase', value: false}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertThat(pushArgs[3]).isEqualTo({seats: 0, partner_purchase: false});
+- name: Rows that all get skipped push exactly what the tag pushed before the option
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '',
+      currency: '',
+      transactionId: '',
+      additionalFields: [{name: '', value: ''}, {name: 'plan', value: null}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 1);
+- name: An additional fields value that is not a table is ignored
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      additionalFields: 'not-a-table',
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
+- name: A tag saved before the option existed pushes exactly the three value arguments
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
 setup: |-
   // The test sandbox loads no real script, so every scenario makes the bundle
   // load succeed; recordConversion() then runs after tapper.init. callInWindow

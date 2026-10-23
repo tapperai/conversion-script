@@ -1,8 +1,8 @@
 homepage: "https://tapper.ai"
 documentation: "https://docs.tapper.ai"
 versions:
-  - sha: "ad1866d890dc868b788e84b19a36f96a143e6001"
-    changeNotes: "Optional checkbox: send the order id when the order value is 0 (off by default; tags that do not tick it are unchanged)."
+  - sha: "1f2492f3afe270ad8d202458dcb7421634ae125c"
+    changeNotes: "Optional checkbox: send the order id when the order value is 0 (off by default). Optional Additional fields table (Name / Value) sent with the conversion (empty by default). Tags that use neither option are unchanged."
   - sha: "dc40adcd92bded343f73dda758df2c1cc737ea57"
     changeNotes: "Value conversions (Order Value / Currency / Transaction ID); non-numeric or out-of-range values fall back to 1 instead of pushing NaN/bad amounts."
   - sha: "62179c382db9008e24664b55e10527715db280b8"

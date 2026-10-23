@@ -33,8 +33,8 @@ everything changed since the merge-base with `origin/master` (commits, staged, u
 It prints `Tests selected: N ...` and what it ran, and on success `PASSED. Put in the commit and the PR description: Tests: local (...)`. The pre-deploy check `Validate template.tpl` is a required hard stop and runs on every ready PR whatever you recorded (one billed minute, it guards the branch Google's Gallery reads), so a recorded local or none choice saves the batch, not that check.
 
 **Trailer placement:** the last paragraph of the commit message AND of the PR description (a squash merge keeps it).
-**Batches and nightly:** every `CI_BATCH_SIZE` (10) merges per branch the FULL suite runs, counting ONLY `affected` and unmarked
-changes (`local` and `skip` are not counted); ONE nightly FULL run (01:41 UTC) as the safety net, only when master moved. A red batch **bisects** to the guilty
+**Batches and nightly:** every `CI_BATCH_SIZE` (10) merges per branch the AFFECTED tests run (since 2026-10-23: `tests.yml` mode AFFECTED measured from the last tested sha, reason `batch-affected`; FULL only when there is no tested sha), counting ONLY `affected` and unmarked
+changes (`local` and `skip` are not counted); ONE nightly FULL run (01:41 UTC) stays the full safety net, only when master moved. A red batch **bisects** to the guilty
 merge (every failed check re-runs) and says which merges chose not to test on their own. Mechanics: `.github/workflows/tests.yml` header.
 
 ## Docs here

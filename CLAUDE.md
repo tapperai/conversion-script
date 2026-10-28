@@ -27,3 +27,5 @@ Copy SELLS: confident and plain; no "not available / planned / next / yet" discl
 `docs/SPEC.md` (how the template works now), `docs/TESTING.md`, `docs/ENVIRONMENT_SPINUP.md`, decisions in `docs/decisions/` (short, frozen). Rule: skill `docs-rule`.
 
 `docs/BACKLOG.md` is the single living list of open asks: capture a new ask there BEFORE starting; delete the entry in the PR that ships it (history keeps the record); a deliberate no goes under `## Dropped` with its reason; unverified code goes under `## P0 - needs verification`.
+
+- **Leak guard (2026-10-28):** this repo is PUBLIC. `scripts/leak-guard/` is a byte-identical copy of the design-system canon; `tests.yml` runs it over the checkout with `--redact` (the match never reaches this public log) inside the required validation job. Never put an internal hostname, project id or instance name in a file, a commit message, a PR or an issue here.

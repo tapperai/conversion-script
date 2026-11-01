@@ -233,3 +233,12 @@ Never point a version entry at a sha that does not exist yet. If the `template.t
   `node --test` check, which CI also runs.
 - `README.md` -- end-user setup instructions (GTM import, parameter mapping)
   and the maintainer release procedure.
+
+## Customer identity and form capture
+
+- **`email` / `phone`**: passed to the Tapper script as the fifth argument `{ email?, phone? }` of `tapper.push` (after the value
+  arguments and the additional fields, `undefined` where one is absent), only the keys that are non-empty strings, and only when
+  at least one is set; with both empty the push is the one above, unchanged. The script normalises and SHA-256 hashes them in the
+  visitor's browser and sends only the hash, only with the visitor's consent; the template never hashes, stores or sends them itself.
+- **`formCapture`**: a checkbox, default off. Only `true` makes the template call `tapper.init(pk, { formCapture: true })`
+  (otherwise `tapper.init(pk)`). It applies when this tag is the one that loads the script.

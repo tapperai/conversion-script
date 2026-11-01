@@ -18,8 +18,15 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
    default): see "What it does".
 7. Optionally add rows to **Additional fields** to send extra details about the
    transaction (see "Additional fields").
-8. Set a trigger that fires on your conversion event (e.g. a purchase or sign-up).
-9. Publish your container.
+8. Optionally map **Customer Email** and **Customer Phone** (e.g. `{{Customer Email}}`, a
+   phone in international format starting with `+` or `00`) so Tapper can match the
+   conversion to the visit that produced it. The Tapper script hashes them (SHA-256) in
+   the visitor's browser and sends only the hash, and only for a visitor whose consent
+   allows it; the plain value is never sent or stored. Leave them empty to send none.
+9. Optionally tick **Capture the hashed email and phone of forms on your own pages** (off by
+   default) to do the same for forms a visitor submits on your own site.
+10. Set a trigger that fires on your conversion event (e.g. a purchase or sign-up).
+11. Publish your container.
 
 ## Parameters
 
@@ -32,6 +39,9 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
 | `transactionId` | Transaction ID | No | Your order/transaction id. Enables value corrections. |
 | `sendOrderIdWithZeroValue` | Send the order id when the order value is 0 | No | Checkbox, off by default. When ticked, an order whose **Order Value** is exactly `0` (e.g. `0`, `'0'`, `'0.00'`) and that has a **Transaction ID** is recorded as `tapper.push(0, currency, transactionId)` (the id as a string) instead of a plain conversion without the id. With it off nothing changes. |
 | `additionalFields` | Additional fields | No | Table of **Name** and **Value** rows, empty by default. Each row adds one field to the conversion; the whole set rides as a 4th argument, `tapper.push(value, currency, transactionId, fields)`. With no rows the tag pushes exactly the arguments it pushed before. See "Additional fields". |
+| `email` | Customer Email | No | Your customer email variable. Hashed (SHA-256) in the browser by the Tapper script; only the hash is sent, only with consent. Empty = none. |
+| `phone` | Customer Phone | No | Your customer phone variable, international format (`+` or `00` first). Hashed like the email; a number with no country code is ignored. Empty = none. |
+| `formCapture` | Capture the hashed email and phone of forms on your own pages | No | Off by default. Passes `formCapture: true` to `tapper.init` when this tag loads the script. |
 
 ## Additional fields
 
@@ -96,3 +106,10 @@ forces a two-commit dance per release:
    `changeNotes`).
 
 Never point a version entry at a sha that does not exist yet. If the `template.tpl` change goes through a PR, merge it first and take its sha from `master`: a squash or rebase merge rewrites it. Maintainers open and merge their own release PRs: PRs merge directly as merge commits (so every sha in the PR survives; there is no merge queue), and the required check `Validate template.tpl (pre-deploy gate)` (`npm test`) runs on the ready PR. Both commits of the dance can ride in one PR, since the merge commit keeps the template commit's sha. Before marking the release PR ready, run `npm test`, run the `___TESTS___` scenarios in the GTM template editor's Tests tab (`npm test` runs them in a local emulator; GTM's own runner is the authoritative one), and get one code review when the change alters how conversions or order values are recorded. Merging a new `metadata.yaml` version to `master` is the release.
+
+## Customer Email and Customer Phone
+
+When either is set, the push gets a fifth argument, `{ email, phone }` (only the keys that are set), after the
+three value arguments and the additional fields (`undefined` where there are none). With both empty the calls are
+exactly the ones in "What it does". The Tapper script hashes the values in the visitor's browser; an older
+script is safe because the Tapper servers drop any plain identifier they receive.

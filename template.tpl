@@ -91,6 +91,28 @@ ___TEMPLATE_PARAMETERS___
     "simpleValueType": true,
     "defaultValue": false,
     "help": "Off by default. When on, an order whose Order Value is exactly 0 (e.g. a fully discounted or free order) is recorded with value 0, its currency and its Transaction ID, instead of as a plain conversion without an order id. Only applies when the Transaction ID is set. Negative, non-numeric and empty Order Values still record a plain conversion."
+  },
+  {
+    "type": "TEXT",
+    "name": "email",
+    "displayName": "Customer Email",
+    "simpleValueType": true,
+    "help": "Optional. Map your customer email variable. The Tapper script hashes it (SHA-256) in the visitor's browser and sends only the hash, and only for a visitor whose consent allows it. The plain address is never sent or stored. Leave empty to send none."
+  },
+  {
+    "type": "TEXT",
+    "name": "phone",
+    "displayName": "Customer Phone",
+    "simpleValueType": true,
+    "help": "Optional. Map your customer phone variable, in international format starting with + or 00 (e.g. +420 123 456 789). Hashed in the browser like the email; a number with no country code is ignored. Leave empty to send none."
+  },
+  {
+    "type": "CHECKBOX",
+    "name": "formCapture",
+    "checkboxText": "Capture the hashed email and phone of forms on your own pages",
+    "simpleValueType": true,
+    "defaultValue": false,
+    "help": "Optional, off by default. When on, the Tapper script hashes the email and phone a visitor types into a form on your own site when they submit it, and sends only the hashes, for a visitor whose consent allows it. Applies when this tag is the one that loads the Tapper script."
   }
 ]
 
@@ -179,21 +201,41 @@ if (hasOrderValue && !orderValueIsValid && !sendZeroValueOrder) {
   logToConsole('Tapper: Order Value is not a positive number, recording the conversion without a value');
 }
 
+// Customer identity: the plain email and phone go ONLY to the Tapper script in the visitor's own browser, which
+// normalises and SHA-256 hashes them there and sends the hash alone (never the plain value), and only when the
+// visitor's consent allows. Empty or non-string values are left out. They travel as the 5th argument of
+// tapper.push ({ email, phone }), after the extra details (4th, undefined when there are none); nothing is
+// passed unless the tag has an email or a phone set, so every other call is exactly the previous one.
+const userData = {};
+if (getType(data.email) === 'string' && data.email !== '') {
+  userData.email = data.email;
+}
+if (getType(data.phone) === 'string' && data.phone !== '') {
+  userData.phone = data.phone;
+}
+const hasUserData = userData.email !== undefined || userData.phone !== undefined;
+
 function recordConversion() {
   if (orderValueIsValid) {
-    if (hasAdditionalFields) {
+    if (hasUserData) {
+      callInWindow('tapper.push', orderValue, data.currency || undefined, data.transactionId || undefined, hasAdditionalFields ? additionalFields : undefined, userData);
+    } else if (hasAdditionalFields) {
       callInWindow('tapper.push', orderValue, data.currency || undefined, data.transactionId || undefined, additionalFields);
     } else {
       callInWindow('tapper.push', orderValue, data.currency || undefined, data.transactionId || undefined);
     }
   } else if (sendZeroValueOrder) {
-    if (hasAdditionalFields) {
+    if (hasUserData) {
+      callInWindow('tapper.push', 0, data.currency || undefined, zeroValueOrderId, hasAdditionalFields ? additionalFields : undefined, userData);
+    } else if (hasAdditionalFields) {
       callInWindow('tapper.push', 0, data.currency || undefined, zeroValueOrderId, additionalFields);
     } else {
       callInWindow('tapper.push', 0, data.currency || undefined, zeroValueOrderId);
     }
   } else {
-    if (hasAdditionalFields) {
+    if (hasUserData) {
+      callInWindow('tapper.push', conversion, undefined, undefined, hasAdditionalFields ? additionalFields : undefined, userData);
+    } else if (hasAdditionalFields) {
       callInWindow('tapper.push', conversion, undefined, undefined, additionalFields);
     } else {
       callInWindow('tapper.push', conversion);
@@ -210,7 +252,11 @@ if (tapperExists) {
   injectScript(
     scriptUrl,
     function () {
-      callInWindow('tapper.init', pk);
+      if (data.formCapture === true) {
+        callInWindow('tapper.init', pk, { formCapture: true });
+      } else {
+        callInWindow('tapper.init', pk);
+      }
       recordConversion();
     },
     function () {
@@ -898,6 +944,107 @@ scenarios:
     runCode(mockData);
     assertApi('gtmOnSuccess').wasCalled();
     assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
+- name: Rich fire with customer email and phone passes them as the 5th argument
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d, e) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d, e];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      email: 'Buyer@Example.com',
+      phone: '+420 123 456 789',
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(pushArgs).isEqualTo([49.99, 'EUR', 'ORD-1', undefined, {email: 'Buyer@Example.com', phone: '+420 123 456 789'}]);
+- name: Legacy fire with a customer email keeps the conversion value and passes the email
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d, e) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d, e];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '3',
+      email: 'buyer@example.com',
+      phone: '',
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(pushArgs).isEqualTo([3, undefined, undefined, undefined, {email: 'buyer@example.com'}]);
+- name: Customer phone beside additional fields passes the details as 4th and the phone as 5th
+  code: |-
+    var pushArgs;
+    mock('callInWindow', (path, a, b, c, d, e) => {
+      if (path === 'tapper.push') pushArgs = [a, b, c, d, e];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      phone: '+420123456789',
+      additionalFields: [{name: 'partner_purchase', value: 'yes'}],
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(pushArgs).isEqualTo([49.99, 'EUR', 'ORD-1', {partner_purchase: 'yes'}, {phone: '+420123456789'}]);
+- name: Empty email and phone fire exactly as before
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      orderValue: '49.99',
+      currency: 'EUR',
+      transactionId: 'ORD-1',
+      email: '',
+      phone: '',
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
+- name: Form capture on initialises the script with the formCapture option
+  code: |-
+    var initArgs;
+    mock('callInWindow', (path, a, b) => {
+      if (path === 'tapper.init') initArgs = [a, b];
+    });
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      formCapture: true,
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(initArgs).isEqualTo(['pk_test_123456789', {formCapture: true}]);
+- name: Form capture off initialises the script with the key only
+  code: |-
+    const mockData = {
+      pk: 'pk_test_123456789',
+      conversion: '1',
+      formCapture: false,
+      gtmOnSuccess: () => {},
+      gtmOnFailure: () => fail('gtmOnFailure should not be called')
+    };
+    runCode(mockData);
+    assertApi('gtmOnSuccess').wasCalled();
+    assertApi('callInWindow').wasCalledWith('tapper.init', 'pk_test_123456789');
 setup: |-
   // The test sandbox loads no real script, so every scenario makes the bundle
   // load succeed; recordConversion() then runs after tapper.init. callInWindow

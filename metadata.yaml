@@ -1,6 +1,8 @@
 homepage: "https://tapper.ai"
 documentation: "https://docs.tapper.ai"
 versions:
+  - sha: "15a895b1c8198d21877facc32dadbe268e3ac238"
+    changeNotes: "Optional Customer Email and Customer Phone (hashed in the visitor's browser by the Tapper script, hash only, only with consent), an opt-in Form capture checkbox, plus the Additional fields table and the zero-value order id option. Empty fields and the box off behave exactly as before."
   - sha: "dc40adcd92bded343f73dda758df2c1cc737ea57"
     changeNotes: "Value conversions (Order Value / Currency / Transaction ID); non-numeric or out-of-range values fall back to 1 instead of pushing NaN/bad amounts."
   - sha: "62179c382db9008e24664b55e10527715db280b8"

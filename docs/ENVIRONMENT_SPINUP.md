@@ -54,3 +54,8 @@ repo or its CI workflow.
 
 `npm test` exiting 0 is the full health check for this repo — there is no
 running service to probe.
+
+## CI detail (moved from CLAUDE.md)
+CI: `.github/workflows/tests.yml`, job `Validate template.tpl (pre-deploy gate)` (about 10 s) runs on every ready PR next to `CI gate` (mode from `CI_GATE_MODE`); `test-batch.yml` batches and bisects; `ci-label.yml` maps the `ci:` labels. Do not merge on a red pre-deploy check. `npm run test:changed` (`scripts/test-changed.mjs`; `-- --list`, `-- --base <ref>`) runs `npm test` (`scripts/validate-template.js`, then every `___TESTS___` scenario via `scripts/run_template_tests.mjs`) unless the change is prose only.
+Time window (batch): a due batch waits until the newest batch on the branch started `CI_BATCH_MIN_INTERVAL_MIN` (default 60; `0` turns it off) minutes ago, unless `CI_BATCH_MAX` (default 32, equal to the bisect's `BISECT_MAX_MERGES` in `tests.yml`) merges are waiting. The AFFECTED `base` is the newest PASSED `(batch)`, `(batch-affected)` or `(nightly)` run on the branch's first-parent line; a red `batch-affected` run is bisected from its own `base`. Local test (no network, a fake `gh`): `bash .github/scripts/ci/batch-trigger.test.sh`.
+Release steps: commit the `template.tpl` change, read `git rev-parse HEAD`, then commit the new first `versions[]` entry in `metadata.yaml` pointing at it (README "Releasing (maintainers)"); both commits ride in one PR.

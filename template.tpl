@@ -55,7 +55,7 @@ ___TEMPLATE_PARAMETERS___
     "name": "currency",
     "displayName": "Currency",
     "simpleValueType": true,
-    "help": "Optional. 3-letter code, e.g. EUR. Leave empty to use your ad account's currency."
+    "help": "Required with Order Value. 3-letter code, e.g. EUR. Without a currency the Order Value is not recorded as a money amount."
   },
   {
     "type": "TEXT",

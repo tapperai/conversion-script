@@ -25,6 +25,7 @@ Categories:
 them. Each item should have enough context to pick up cold.)
 
 - Confirmation-page placement guidance in the tag editor (a LABEL parameter plus help text on Conversion Value and Order Value saying to fire the tag on the order confirmation page only, never on a landing page): open, not started. Editor text only, no runtime change. Needs a `template.tpl` change plus a `metadata.yaml` release. Split out of closed PR #3.
+- Release the corrected Currency help text (it no longer says an empty currency uses the ad account's currency): `template.tpl` is changed on master, the Gallery serves the old text until a new first `versions[]` entry in `metadata.yaml` names its commit; merge that PR with a MERGE commit.
 
 ---
 

@@ -55,7 +55,7 @@ ___TEMPLATE_PARAMETERS___
     "name": "currency",
     "displayName": "Currency",
     "simpleValueType": true,
-    "help": "Optional. 3-letter code, e.g. EUR. Leave empty to use your ad account's currency."
+    "help": "3-letter code, e.g. EUR. Always map it: without a currency, Tapper records the conversion with no order value."
   },
   {
     "type": "TEXT",
@@ -449,7 +449,7 @@ scenarios:
     runCode(mockData);
     assertApi('gtmOnSuccess').wasCalled();
     assertApi('callInWindow').wasCalledWith('tapper.push', 49.99, 'EUR', 'ORD-1');
-- name: Rich fire without currency uses account default
+- name: Rich fire without currency passes no currency
   code: |-
     const mockData = {
       pk: 'pk_test_123456789',

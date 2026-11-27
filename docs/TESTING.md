@@ -64,7 +64,7 @@ scenario. Each scenario sets `data` and asserts on the `tapper.push` call.
 | Fails without pk | Missing `pk` → `gtmOnFailure()`, no push. |
 | Legacy fire when Order Value is empty | `orderValue` empty → `tapper.push(1)` (legacy path). |
 | Rich fire with value and currency | `orderValue: '49.99'`, `currency: 'EUR'`, `transactionId: 'ORD-1'` → `tapper.push(49.99, 'EUR', 'ORD-1')`. |
-| Rich fire without currency uses account default | `orderValue` set, `currency`/`transactionId` empty → `tapper.push(49.99, undefined, undefined)`. |
+| Rich fire without currency passes no currency | `orderValue` set, `currency`/`transactionId` empty → `tapper.push(49.99, undefined, undefined)`. |
 | Non-numeric Order Value falls back to legacy conversion | `orderValue: 'not-a-number'` → falls back to `tapper.push(1)`, conversion still recorded. |
 | Non-numeric Conversion Value falls back to 1 | `conversion: 'abc'` → `tapper.push(1)`. |
 | Zero Order Value with an id and the option absent / off records the plain conversion (2) | `orderValue: '0'` + id, `sendOrderIdWithZeroValue` absent or `false` → `tapper.push(1)` exactly as before; no `tapper.push(0, ...)`. |

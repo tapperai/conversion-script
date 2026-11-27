@@ -11,8 +11,8 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
    **Order Value** is empty).
 5. Map **Order Value** to your order total variable (e.g. `{{Ecommerce Value}}`)
    to record the order amount. Leave it empty to record a plain conversion.
-6. Optionally set **Currency** (3-letter code, e.g. `EUR`; leave empty to use
-   your ad account's currency) and a **Transaction ID** (your order/transaction
+6. Set **Currency** (3-letter code, e.g. `EUR`; always map it: without a
+   currency, Tapper records the conversion with no order value) and optionally a **Transaction ID** (your order/transaction
    id — enables value corrections).
    Optionally tick **Send the order id when the order value is 0** (off by
    default): see "What it does".
@@ -35,7 +35,7 @@ Records a conversion event via the [Tapper](https://tapper.ai) monitoring script
 | `pk` | Public Key (pk) | Yes | Your Tapper Public Key (`pk_live_...` or `pk_test_...`). |
 | `conversion` | Conversion Value | No | Legacy conversion value, defaults to `1`. Provided string values are coerced to a number; a non-numeric value records as `1`. Only used when **Order Value** is empty. |
 | `orderValue` | Order Value | No | Your order total, e.g. `{{Ecommerce Value}}`. Coerced to a number; if it is not a positive number the tag falls back to the legacy conversion — the conversion is never dropped. |
-| `currency` | Currency | No | 3-letter code, e.g. `EUR`. Leave empty to use your ad account's currency. |
+| `currency` | Currency | No | 3-letter code, e.g. `EUR`. Always map it: without a currency, Tapper records the conversion with no order value. |
 | `transactionId` | Transaction ID | No | Your order/transaction id. Enables value corrections. |
 | `sendOrderIdWithZeroValue` | Send the order id when the order value is 0 | No | Checkbox, off by default. When ticked, an order whose **Order Value** is exactly `0` (e.g. `0`, `'0'`, `'0.00'`) and that has a **Transaction ID** is recorded as `tapper.push(0, currency, transactionId)` (the id as a string) instead of a plain conversion without the id. With it off nothing changes. |
 | `additionalFields` | Additional fields | No | Table of **Name** and **Value** rows, empty by default. Each row adds one field to the conversion; the whole set rides as a 4th argument, `tapper.push(value, currency, transactionId, fields)`. With no rows the tag pushes exactly the arguments it pushed before. See "Additional fields". |
@@ -78,8 +78,8 @@ On fire, the tag ensures the Tapper monitoring script is loaded (injecting and
 initialising it with your Public Key on first use), then records the conversion:
 
 - **Order Value set** — calls `tapper.push(orderValue, currency, transactionId)`
-  (amount-first). Currency omitted → your connected ad account's default
-  currency applies.
+  (amount-first). Currency omitted → Tapper records the conversion with no order value
+  (an amount with no currency and no transaction id is read as a score).
 - **Order Value empty** — calls `tapper.push(conversion)`, the legacy path,
   exactly as before.
 - **Order Value 0** — with **Send the order id when the order value is 0**
